@@ -29,7 +29,7 @@ extern "C" {
  *
  * @brief Configures the size of the internal buffer if used.
  */
-#define TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_SIZE 5120
+#define TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_SIZE 2048
 
 /**
  * @def TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_WRITE_MODE
@@ -89,7 +89,7 @@ extern "C" {
 * But integrated J-Link OB interfaces are slower and needs about 5-10 KB, 
 * depending on the amount of data produced.
 */
-#define TRC_CFG_STREAM_PORT_RTT_UP_BUFFER_SIZE 5120
+#define TRC_CFG_STREAM_PORT_RTT_UP_BUFFER_SIZE 2048
 
 /**
 * @def TRC_CFG_STREAM_PORT_RTT_DOWN_BUFFER_SIZE

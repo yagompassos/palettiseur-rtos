@@ -110,4 +110,8 @@ extern uint32_t    SystemCoreClock;
 #define xPortPendSVHandler                          PendSV_Handler
 #define xPortSysTickHandler                         SysTick_Handler
 /* A header file that defines trace macro can be included here. */
+
+#if ( configUSE_TRACE_FACILITY == 1 )
+#include "trcRecorder.h"
+#endif
 #endif /* FREERTOS_CONFIG_H */

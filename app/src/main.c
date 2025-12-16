@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- *  Created on: 16 août 2018
+ *  Created on: 16 aoï¿½t 2018
  *      Author: Laurent
  */
 
