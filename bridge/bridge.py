@@ -12,7 +12,10 @@ import pathlib
 import sys
 import clr
 
-clr.AddReference(str(pathlib.Path().absolute()) + "\\lib\\EngineIO.dll")
+script_dir = pathlib.Path(__file__).parent.absolute()
+dll_path = str(script_dir / "lib" / "EngineIO.dll")
+clr.AddReference(dll_path)
+
 from EngineIO import *
 
 
@@ -270,22 +273,22 @@ class EngineIO_Commands(Thread):
                 # Send data 1 to FactoryIO (Address 0 to 6)
                 for i in range(8):
                     actuator = MemoryMap.Instance.GetBit(i, MemoryType.Output)
-                    actuator.Value = (data1_byte & (1 << i)) >> i
+                    actuator.Value = bool((data1_byte & (1 << i)) >> i)
                     MemoryMap.Instance.Update()
                 # Send data 2 to FactoryIO (Address 7 to 13)
                 for i in range(8):
                     actuator = MemoryMap.Instance.GetBit(i+7, MemoryType.Output)
-                    actuator.Value = (data2_byte & (1 << i)) >> i
+                    actuator.Value = bool((data2_byte & (1 << i)) >> i)
                     MemoryMap.Instance.Update()
                 # Send data 3 to FactoryIO (Address 14 to 20)
                 for i in range(8):
                     actuator = MemoryMap.Instance.GetBit(i+14, MemoryType.Output)
-                    actuator.Value = (data3_byte & (1 << i)) >> i
+                    actuator.Value = bool((data3_byte & (1 << i)) >> i)
                     MemoryMap.Instance.Update()
                 # Send data 4 to FactoryIO (Address 21 to 27)
                 for i in range(8):
                     actuator = MemoryMap.Instance.GetBit(i+21, MemoryType.Output)
-                    actuator.Value = (data4_byte & (1 << i)) >> i
+                    actuator.Value = bool((data4_byte & (1 << i)) >> i)
                     MemoryMap.Instance.Update()
 
 
@@ -392,4 +395,4 @@ class EngineIO_Controller():
 
 
 if __name__ == "__main__":
-    EngineIO_Controller(port='COM5', baudrate=115200, timeout=.5, rate=0.016,  verbose=True)
+    EngineIO_Controller(port='COM6', baudrate=115200, timeout=.5, rate=0.016,  verbose=True)
