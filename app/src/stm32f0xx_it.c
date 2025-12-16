@@ -63,7 +63,7 @@
   * @brief  This function handles NMI exception.
   * @param  None
   * @retval None
-  */
+   */
 void NMI_Handler(void)
 {
 }
@@ -85,30 +85,30 @@ void HardFault_Handler(void)
   * @brief  This function handles SVCall exception.
   * @param  None
   * @retval None
-  */
+
 void SVC_Handler(void)
 {
 }
-
+ */
 /**
   * @brief  This function handles PendSVC exception.
   * @param  None
   * @retval None
-  */
+
 void PendSV_Handler(void)
 {
 }
-
+ */
 /**
   * @brief  This function handles SysTick Handler.
   * @param  None
   * @retval None
-  */
+
 void SysTick_Handler(void)
 {
   // HAL_IncTick();
 }
-
+ */
 /******************************************************************************/
 /*                 STM32F0xx Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
