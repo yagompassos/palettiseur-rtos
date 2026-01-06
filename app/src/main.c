@@ -1,8 +1,8 @@
 /*
  * main.c
  *
- *  Created on: 16 ao�t 2018
- *      Author: Laurent
+ *  Created on: 06 janvier 2026
+ *      Author: Yago
  */
 
 #include "stm32f0xx.h"
@@ -18,6 +18,11 @@ static uint8_t 	SystemClock_Config	(void);
 // FreeRTOS tasks
 void vTaskLed(void *pvParameters);
 void vTaskControl(void *pvParameters);
+void vTaskSensorMonitor(void *pvParameters);
+
+// FreeRTOS entities
+xTaskHandle			vTaskControl_handle;
+
 
 int main(void)
 {
@@ -37,8 +42,9 @@ int main(void)
 	FACTORY_IO_update();
 
 	// Creating FreeRTOS tasks
+	xTaskCreate(vTaskSensorMonitor, "Task_Sensor_Monitor", 256, NULL, 3, NULL);
 	xTaskCreate(vTaskLed, "Task_LED", 128, NULL, 1, NULL);
-	xTaskCreate(vTaskControl, "Task_Control", 512, NULL, 2, NULL);
+	xTaskCreate(vTaskControl, "Task_Control", 128, NULL, 2, &vTaskControl_handle);
 
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");
@@ -51,22 +57,40 @@ int main(void)
 	}
 }
 
+// Task Sensor Monitor receives value of sensor and notifies tasks.
+void vTaskSensorMonitor (void *pvParameters){
+    static uint8_t last_sensor_state = 1;
+    uint8_t current_sensor_state;
+
+    while(1){
+    	// DEVE SE LER O FACTORY_IO_update(); TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
+        current_sensor_state = FACTORY_IO_Sensors_Get(0x00000002);
+
+        if (current_sensor_state == 0 && last_sensor_state == 1) {
+            xTaskNotifyGive(vTaskControl_handle);
+        }
+
+        last_sensor_state = current_sensor_state;
+
+        vTaskDelay(20);
+    }
+}
+
 /*
- *	Task1 toggles LED every 300ms
+ *	TaskLed toggles LED every 300ms
  */
 void vTaskLed (void *pvParameters)
 {
 	my_printf("task1: vou rodar!\n\r");
 	while(1)
 	{
-		my_printf("task1: e minha vez\n\r");
 		BSP_LED_Toggle();
 		vTaskDelay(100);
 	}
 }
 
 /*
- *	Task2 controls GPIO interruption
+ *	TaskControl controls conveyor activation
  */
 void vTaskControl (void *pvParameters) {
 	my_printf("Waiting for button...\n\r");
@@ -78,15 +102,16 @@ void vTaskControl (void *pvParameters) {
 			my_printf("Starting Conveyor\r\n");
 			FACTORY_IO_Actuators_Set(0x00000001);
 
-			// Wait for sensor S[1] = 0 (optical barrier)
+			//Awaits the notification from Task Sensor Monitor
 			my_printf("Waiting for sensor...\r\n");
-			while (FACTORY_IO_Sensors_Get(0x00000002) == 1);
-
+			ulTaskNotifyTake(pdTRUE, 0);
+			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+			// Reaching this point means that a notification has been received
 			// Stop conveyor A[0] = 0
 			my_printf("Stop!\r\n");
 			FACTORY_IO_Actuators_Set(0x00000000);
 		}
-		vTaskDelay(500);
+		vTaskDelay(50);
 	}
 }
 
