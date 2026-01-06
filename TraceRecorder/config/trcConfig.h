@@ -66,7 +66,7 @@ extern "C" {
  *
  * Default value is 1.
  */
-#define TRC_CFG_INCLUDE_MEMMANG_EVENTS 1
+#define TRC_CFG_INCLUDE_MEMMANG_EVENTS 0
 
 /**
  * @def TRC_CFG_INCLUDE_USER_EVENTS
@@ -90,7 +90,7 @@ extern "C" {
  *
  * Default value is 1.
  */
-#define TRC_CFG_INCLUDE_USER_EVENTS 1
+#define TRC_CFG_INCLUDE_USER_EVENTS 0
 
 /**
  * @def TRC_CFG_INCLUDE_ISR_TRACING
@@ -211,14 +211,14 @@ extern "C" {
  * The unit depends on the delay function used for the specific kernel port (trcKernelPort.c).
  * For example, FreeRTOS uses ticks while Zephyr uses ms.
  */
-#define TRC_CFG_CTRL_TASK_DELAY 50
+#define TRC_CFG_CTRL_TASK_DELAY 10
 
 /**
  * @def TRC_CFG_CTRL_TASK_STACK_SIZE
  * @brief The stack size of the Tracealyzer Control (TzCtrl) task.
  * See TRC_CFG_CTRL_TASK_PRIORITY for further information about TzCtrl.
  */
-#define TRC_CFG_CTRL_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
+#define TRC_CFG_CTRL_TASK_STACK_SIZE 1024
 
 /**
  * @def TRC_CFG_RECORDER_BUFFER_ALLOCATION

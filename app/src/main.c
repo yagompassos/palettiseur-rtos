@@ -38,6 +38,9 @@ int main(void)
 	my_printf("\r\nConsole Ready!\r\n");
 	my_printf("SYSCLK = %d Hz\r\n", SystemCoreClock);
 
+	// Start Trace Recording
+	xTraceEnable(TRC_START);
+
 	// Read all states from the scene
 	FACTORY_IO_update();
 
@@ -63,7 +66,8 @@ void vTaskSensorMonitor (void *pvParameters){
     uint8_t current_sensor_state;
 
     while(1){
-    	// DEVE SE LER O FACTORY_IO_update(); TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
+    	// DEVE SE LER O factoryIO COM update TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
+//    	FACTORY_IO_update();
         current_sensor_state = FACTORY_IO_Sensors_Get(0x00000002);
 
         if (current_sensor_state == 0 && last_sensor_state == 1) {
