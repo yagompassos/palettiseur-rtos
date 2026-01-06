@@ -10,18 +10,14 @@
 #include "bsp.h"
 #include "factory_io.h"
 #include "delay.h"
+#include "FreeRTOSConfig.h"
 
-
-/*
- * Local Static Functions
- */
-
+//Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
 
-
-/*
- * Project Entry Point
- */
+// FreeRTOS tasks
+void vTaskLed(void *pvParameters);
+void vTaskControl(void *pvParameters);
 
 int main(void)
 {
@@ -40,31 +36,59 @@ int main(void)
 	// Read all states from the scene
 	FACTORY_IO_update();
 
-	// Wait here for user button
-	while(BSP_PB_GetState() == 0);
+	// Creating FreeRTOS tasks
+	xTaskCreate(vTaskLed, "Task_LED", 128, NULL, 1, NULL);
+	xTaskCreate(vTaskControl, "Task_Control", 512, NULL, 2, NULL);
 
-	// Start conveyor A[0] = 1
-	my_printf("Starting Conveyor\r\n");
-	FACTORY_IO_Actuators_Set(0x00000001);
-
-	// Wait for sensor S[1] = 0 (optical barrier)
-	my_printf("Waiting for sensor...\r\n");
-	while (FACTORY_IO_Sensors_Get(0x00000002) == 1);
-
-	// Stop conveyor A[0] = 0
-	my_printf("Stop!\r\n");
-	FACTORY_IO_Actuators_Set(0x00000000);
+	// Start the Scheduler
+	my_printf("Starting Scheduler...\r\n");
+	vTaskStartScheduler();
 
 	// Loop forever
 	while(1)
 	{
-		// LED blinking
-		BSP_LED_Toggle();
-		delay_ms(100);
+		// Should not be here
 	}
 }
 
+/*
+ *	Task1 toggles LED every 300ms
+ */
+void vTaskLed (void *pvParameters)
+{
+	my_printf("task1: vou rodar!\n\r");
+	while(1)
+	{
+		my_printf("task1: e minha vez\n\r");
+		BSP_LED_Toggle();
+		vTaskDelay(100);
+	}
+}
 
+/*
+ *	Task2 controls GPIO interruption
+ */
+void vTaskControl (void *pvParameters) {
+	my_printf("Waiting for button...\n\r");
+
+	while (1) {
+
+		if (BSP_PB_GetState() == 1) {
+			// Start conveyor A[0] = 1
+			my_printf("Starting Conveyor\r\n");
+			FACTORY_IO_Actuators_Set(0x00000001);
+
+			// Wait for sensor S[1] = 0 (optical barrier)
+			my_printf("Waiting for sensor...\r\n");
+			while (FACTORY_IO_Sensors_Get(0x00000002) == 1);
+
+			// Stop conveyor A[0] = 0
+			my_printf("Stop!\r\n");
+			FACTORY_IO_Actuators_Set(0x00000000);
+		}
+		vTaskDelay(500);
+	}
+}
 
 /*
  * 	Clock configuration for the Nucleo STM32F072RB board
@@ -72,7 +96,6 @@ int main(void)
  * 	SYSCLK, AHB, APB1 				-> 48MHz
  *  PA8 as MCO with /16 prescaler 	-> 3MHz
  */
-
 static uint8_t SystemClock_Config()
 {
 	uint32_t	status;
