@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -33,7 +33,7 @@ extern "C" {
  * recording is stopped when the buffer becomes full. This is useful for
  * recording events following a specific state, e.g., the startup sequence.
  */
-#define TRC_CFG_SNAPSHOT_MODE TRC_SNAPSHOT_MODE_STOP_WHEN_FULL
+#define TRC_CFG_SNAPSHOT_MODE TRC_SNAPSHOT_MODE_RING_BUFFER
 
 /**
  * @def TRC_CFG_EVENT_BUFFER_SIZE
@@ -79,7 +79,7 @@ extern "C" {
  *
  * Default value is 800.
  */
-#define TRC_CFG_SYMBOL_TABLE_SIZE 200
+#define TRC_CFG_SYMBOL_TABLE_SIZE 800
 
 #if (TRC_CFG_SYMBOL_TABLE_SIZE == 0)
 #error "TRC_CFG_SYMBOL_TABLE_SIZE may not be zero!"

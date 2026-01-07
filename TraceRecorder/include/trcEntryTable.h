@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -19,7 +19,7 @@
 
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
 
-#include <trcTypes.h>
+#include "trcTypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,40 +32,21 @@ extern "C" {
  */
 
 #define TRC_ENTRY_CREATE_WITH_ADDRESS(_pvAddress, _pxEntryHandle) (xTraceEntryCreate(_pxEntryHandle) == TRC_SUCCESS ? (((TraceEntry_t*)*(_pxEntryHandle))->pvAddress = (_pvAddress), TRC_SUCCESS) : TRC_FAIL)
-#define TRC_ENTRY_SET_STATE(xEntryHandle, uxStateIndex, uxState) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(((TraceEntry_t*)(xEntryHandle))->xStates[uxStateIndex] = (uxState), TRC_SUCCESS)
+#define TRC_ENTRY_SET_STATE(xEntryHandle, uiStateIndex, uxState) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(((TraceEntry_t*)(xEntryHandle))->xStates[uiStateIndex] = (uxState), TRC_SUCCESS)
 #define TRC_ENTRY_SET_OPTIONS(xEntryHandle, uiMask) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(((TraceEntry_t*)(xEntryHandle))->uiOptions |= (uiMask), TRC_SUCCESS)
 #define TRC_ENTRY_CLEAR_OPTIONS(xEntryHandle, uiMask) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(((TraceEntry_t*)(xEntryHandle))->uiOptions &= ~(uiMask), TRC_SUCCESS)
 #define TRC_ENTRY_GET_ADDRESS(xEntryHandle, ppvAddress) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(*(ppvAddress) = ((TraceEntry_t*)(xEntryHandle))->pvAddress, TRC_SUCCESS)
 #define TRC_ENTRY_GET_SYMBOL(xEntryHandle, pszSymbol) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(*(pszSymbol) = ((TraceEntry_t*)(xEntryHandle))->szSymbol, TRC_SUCCESS)
-#define TRC_ENTRY_GET_STATE(xEntryHandle, uxStateIndex, puxState) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(*(puxState) = ((TraceEntry_t*)(xEntryHandle))->xStates[uxStateIndex], TRC_SUCCESS)
-#define TRC_ENTRY_GET_STATE_RETURN(xEntryHandle, uxStateIndex) (((TraceEntry_t*)(xEntryHandle))->xStates[uxStateIndex])
+#define TRC_ENTRY_GET_STATE(xEntryHandle, uiStateIndex, puxState) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(*(puxState) = ((TraceEntry_t*)(xEntryHandle))->xStates[uiStateIndex], TRC_SUCCESS)
 #define TRC_ENTRY_GET_OPTIONS(xEntryHandle, puiOptions) TRC_COMMA_EXPR_TO_STATEMENT_EXPR_2(*(puiOptions) = ((TraceEntry_t*)(xEntryHandle))->uiOptions, TRC_SUCCESS)
 
-#define TRC_ENTRY_TABLE_STATE_COUNT (3UL)
-#define TRC_ENTRY_TABLE_SYMBOL_LENGTH  ((uint32_t)(TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH))
-
-/* TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE has to be aligned to TraceUnsignedBaseType_t but with a uint32_t padding to ensure that TraceEntry_t size is aligned (uiOptions is uint32_t) */
-#define TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE (((((sizeof(char) * (uint32_t)(TRC_ENTRY_TABLE_SYMBOL_LENGTH) - sizeof(uint32_t)) + (sizeof(TraceUnsignedBaseType_t) - 1UL)) / sizeof(TraceUnsignedBaseType_t)) * sizeof(TraceUnsignedBaseType_t)) + sizeof(uint32_t))
-
-#if (TRC_CFG_ENTRY_SLOTS > 256UL)
-typedef uint16_t TraceEntryIndex_t;
-#define TRC_ENTRY_INDEX_ALIGNMENT_MULTIPLE (4) /* Must align to 64-bit (sizeof(uint64_t) / sizeof(uint16_t)) */
-#else
-typedef uint8_t TraceEntryIndex_t;
-#define TRC_ENTRY_INDEX_ALIGNMENT_MULTIPLE (8)	/* Must align to 64-bit (sizeof(uint64_t) / sizeof(uint8_t)) */
-#endif
-
-#define TRC_ENTRY_TABLE_SLOTS ((((TRC_CFG_ENTRY_SLOTS) + (TRC_ENTRY_INDEX_ALIGNMENT_MULTIPLE) - 1) / TRC_ENTRY_INDEX_ALIGNMENT_MULTIPLE) * TRC_ENTRY_INDEX_ALIGNMENT_MULTIPLE)
-
-typedef struct EntryIndexTable	/* Aligned because TRC_ENTRY_TABLE_SLOTS is always a multiple that aligns to 64-bit */
-{
-	TraceEntryIndex_t axFreeIndexes[TRC_ENTRY_TABLE_SLOTS];	/* slot count and size is aligned to 64-bit */
-	uint32_t uiFreeIndexCount;
-	uint32_t reserved;			/* alignment */
-} TraceEntryIndexTable_t;
+#define TRC_ENTRY_TABLE_SLOTS (TRC_CFG_ENTRY_SLOTS)
+#define TRC_ENTRY_TABLE_STATE_COUNT (3)
+#define TRC_ENTRY_TABLE_SYMBOL_LENGTH (TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH)
+#define TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE ((((sizeof(char) * TRC_ENTRY_TABLE_SYMBOL_LENGTH) + (sizeof(uint32_t) - 1)) / sizeof(uint32_t)) * sizeof(uint32_t))
 
 /** Trace Entry Structure */
-typedef struct TraceEntry	/* Aligned because TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE will align together with uiOptions */
+typedef struct TraceEntry
 {
 	void* pvAddress;												/**< */
 	TraceUnsignedBaseType_t xStates[TRC_ENTRY_TABLE_STATE_COUNT];	/**< */
@@ -73,26 +54,13 @@ typedef struct TraceEntry	/* Aligned because TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE wi
 	char szSymbol[TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE];				/**< */
 } TraceEntry_t;
 
-typedef struct TraceEntryTable	/* Aligned */
-{
-	TraceUnsignedBaseType_t uxSlots;
-	TraceUnsignedBaseType_t uxEntrySymbolLength;
-	TraceUnsignedBaseType_t uxEntryStateCount;
-	TraceEntry_t axEntries[TRC_ENTRY_TABLE_SLOTS];
-} TraceEntryTable_t;
+#define TRC_ENTRY_TABLE_SIZE (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + (sizeof(TraceEntry_t) * (TRC_ENTRY_TABLE_SLOTS)))
 
-/**
- * @internal Initialize trace entry index table.
- * 
- * This routine initializes the trace entry index table which keeps track
- * of availables indexes.
- * 
- * @param[in] pxBuffer Pointer to uninitialized trace entry index table buffer.
- * 
- * @retval TRC_FAIL Failure
- * @retval TRC_SUCCESS Success
- */
-traceResult xTraceEntryIndexTableInitialize(TraceEntryIndexTable_t* const pxBuffer);
+/** Trace Entry Table Buffer Structure */
+typedef struct TraceEntryTableBuffer
+{
+	uint8_t buffer[(TRC_ENTRY_TABLE_SIZE)]; /**< */
+} TraceEntryTableBuffer_t;
 
 /**
  * @internal Initialize trace entry table.
@@ -105,7 +73,7 @@ traceResult xTraceEntryIndexTableInitialize(TraceEntryIndexTable_t* const pxBuff
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryTableInitialize(TraceEntryTable_t* const pxBuffer);
+traceResult xTraceEntryTableInitialize(TraceEntryTableBuffer_t* pxBuffer);
 
 /**
  * @brief Creates trace entry.
@@ -136,7 +104,7 @@ traceResult xTraceEntryDelete(TraceEntryHandle_t xEntryHandle);
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryFind(const void* const pvAddress, TraceEntryHandle_t* pxEntryHandle);
+traceResult xTraceEntryFind(void* pvAddress, TraceEntryHandle_t* pxEntryHandle);
 
 /**
  * @brief Gets the number of entries in the trace entry table.
@@ -163,13 +131,12 @@ traceResult xTraceEntryGetAtIndex(uint32_t index, TraceEntryHandle_t* pxEntryHan
  * @brief Sets symbol for entry.
  * 
  * @param[in] xEntryHandle Pointer to initialized trace entry handle.
- * @param[in] szSymbol Pointer to symbol string, set by function
- * @param[in] uiLength Symbol length
+ * @param[out] szSymbol Pointer to symbol string, set by function
  * 
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntrySetSymbol(const TraceEntryHandle_t xEntryHandle, const char* szSymbol, uint32_t uiLength);
+traceResult xTraceEntrySetSymbol(TraceEntryHandle_t xEntryHandle, const char* szSymbol);
 
 #if ((TRC_CFG_USE_TRACE_ASSERT) == 1)
 
@@ -182,19 +149,19 @@ traceResult xTraceEntrySetSymbol(const TraceEntryHandle_t xEntryHandle, const ch
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryCreateWithAddress(void* const pvAddress, TraceEntryHandle_t* pxEntryHandle);
+traceResult xTraceEntryCreateWithAddress(void* pvAddress, TraceEntryHandle_t* pxEntryHandle);
 
 /**
  * @brief Sets trace entry state.
  * 
  * @param[in] xEntryHandle Pointer to initialized trace entry handle.
- * @param[in] uxStateIndex Index of state (< TRC_ENTRY_TABLE_STATE_COUNT).
+ * @param[in] uiStateIndex Index of state (< TRC_ENTRY_TABLE_STATE_COUNT).
  * @param[in] uxState State.
  * 
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntrySetState(const TraceEntryHandle_t xEntryHandle, TraceUnsignedBaseType_t uxStateIndex, TraceUnsignedBaseType_t uxState);
+traceResult xTraceEntrySetState(TraceEntryHandle_t xEntryHandle, uint32_t uiStateIndex, TraceUnsignedBaseType_t uxState);
 
 /**
  * @brief Sets trace entry option(s).
@@ -205,7 +172,7 @@ traceResult xTraceEntrySetState(const TraceEntryHandle_t xEntryHandle, TraceUnsi
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntrySetOptions(const TraceEntryHandle_t xEntryHandle, uint32_t uiMask);
+traceResult xTraceEntrySetOptions(TraceEntryHandle_t xEntryHandle, uint32_t uiMask);
 
 /**
  * @brief Clears trace entry option(s).
@@ -216,7 +183,7 @@ traceResult xTraceEntrySetOptions(const TraceEntryHandle_t xEntryHandle, uint32_
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryClearOptions(const TraceEntryHandle_t xEntryHandle, uint32_t uiMask);
+traceResult xTraceEntryClearOptions(TraceEntryHandle_t xEntryHandle, uint32_t uiMask);
 
 /**
  * @brief Gets linked address for trace entry.
@@ -227,7 +194,7 @@ traceResult xTraceEntryClearOptions(const TraceEntryHandle_t xEntryHandle, uint3
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryGetAddress(const TraceEntryHandle_t xEntryHandle, void **ppvAddress);
+traceResult xTraceEntryGetAddress(TraceEntryHandle_t xEntryHandle, void **ppvAddress);
 
 /**
  * @brief Gets symbol for trace entry.
@@ -238,29 +205,19 @@ traceResult xTraceEntryGetAddress(const TraceEntryHandle_t xEntryHandle, void **
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryGetSymbol(const TraceEntryHandle_t xEntryHandle, const char** pszSymbol);
+traceResult xTraceEntryGetSymbol(TraceEntryHandle_t xEntryHandle, const char** pszSymbol);
 
 /**
  * @brief Gets state for trace entry.
  * 
  * @param[in] xEntryHandle Pointer to initialized trace entry handle.
- * @param[in] uxStateIndex State index (< TRC_ENTRY_TABLE_STATE_COUNT).
+ * @param[in] uiStateIndex State index (< TRC_ENTRY_TABLE_STATE_COUNT).
  * @param[out] puxState State.
  * 
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryGetState(const TraceEntryHandle_t xEntryHandle, TraceUnsignedBaseType_t uxStateIndex, TraceUnsignedBaseType_t *puxState);
-
-/**
- * @internal Returns state for trace entry.
- *
- * @param[in] xEntryHandle Pointer to initialized trace entry handle.
- * @param[in] uxStateIndex State index (< TRC_ENTRY_TABLE_STATE_COUNT).
- *
- * @returns State
- */
-TraceUnsignedBaseType_t xTraceEntryGetStateReturn(const TraceEntryHandle_t xEntryHandle, TraceUnsignedBaseType_t uxStateIndex);
+traceResult xTraceEntryGetState(TraceEntryHandle_t xEntryHandle, uint32_t uiStateIndex, TraceUnsignedBaseType_t *puxState);
 
 /**
  * @brief Gets options for trace entry.
@@ -271,7 +228,7 @@ TraceUnsignedBaseType_t xTraceEntryGetStateReturn(const TraceEntryHandle_t xEntr
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceEntryGetOptions(const TraceEntryHandle_t xEntryHandle, uint32_t *puiOptions);
+traceResult xTraceEntryGetOptions(TraceEntryHandle_t xEntryHandle, uint32_t *puiOptions);
 
 #else
 
@@ -284,7 +241,6 @@ traceResult xTraceEntryGetOptions(const TraceEntryHandle_t xEntryHandle, uint32_
 #define xTraceEntryGetAddress TRC_ENTRY_GET_ADDRESS
 #define xTraceEntryGetSymbol TRC_ENTRY_GET_SYMBOL
 #define xTraceEntryGetState TRC_ENTRY_GET_STATE
-#define xTraceEntryGetStateReturn TRC_ENTRY_GET_STATE_RETURN
 #define xTraceEntryGetOptions TRC_ENTRY_GET_OPTIONS
 
 #endif /* ((TRC_CFG_USE_TRACE_ASSERT) == 1) */

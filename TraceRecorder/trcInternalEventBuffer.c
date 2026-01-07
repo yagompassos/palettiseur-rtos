@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -20,7 +20,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-static TraceMultiCoreEventBuffer_t *pxInternalEventBuffer TRC_CFG_RECORDER_DATA_ATTRIBUTE;
+static TraceMultiCoreEventBuffer_t *pxInternalEventBuffer;
 
 traceResult xTraceInternalEventBufferInitialize(uint8_t* puiBuffer, uint32_t uiSize)
 {
@@ -44,24 +44,6 @@ traceResult xTraceInternalEventBufferInitialize(uint8_t* puiBuffer, uint32_t uiS
 	return TRC_SUCCESS;
 }
 
-traceResult xTraceInternalEventBufferAlloc(uint32_t uiSize, void **ppvData)
-{
-	/* This should never fail */
-	TRC_ASSERT(xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_INTERNAL_EVENT_BUFFER));
-
-	return xTraceMultiCoreEventBufferAlloc(pxInternalEventBuffer, uiSize, ppvData);
-}
-
-traceResult xTraceInternalEventBufferAllocCommit(void *pvData, uint32_t uiSize, int32_t *piBytesWritten)
-{
-	(void)pvData;
-
-	/* This should never fail */
-	TRC_ASSERT(xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_INTERNAL_EVENT_BUFFER));
-
-	return xTraceMultiCoreEventBufferAllocCommit(pxInternalEventBuffer, pvData, uiSize, piBytesWritten);
-}
-
 traceResult xTraceInternalEventBufferPush(void *pvData, uint32_t uiSize, int32_t *piBytesWritten)
 {
 	/* This should never fail */
@@ -70,36 +52,12 @@ traceResult xTraceInternalEventBufferPush(void *pvData, uint32_t uiSize, int32_t
 	return xTraceMultiCoreEventBufferPush(pxInternalEventBuffer, pvData, uiSize, piBytesWritten);
 }
 
-traceResult xTraceInternalEventBufferTransferAll(void)
+traceResult xTraceInternalEventBufferTransfer(int32_t *piBytesWritten)
 {
-	int32_t iBytesWritten = 0;
-
 	/* This should never fail */
 	TRC_ASSERT(xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_INTERNAL_EVENT_BUFFER));
-
-	return xTraceMultiCoreEventBufferTransferAll(pxInternalEventBuffer, &iBytesWritten);
-}
-
-traceResult xTraceInternalEventBufferTransferChunk(void)
-{
-	int32_t iBytesWritten = 0;
-	int32_t iCounter = 0;
-
-	/* This should never fail */
-	TRC_ASSERT(xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_INTERNAL_EVENT_BUFFER));
-
-	do
-	{
-		if (xTraceMultiCoreEventBufferTransferChunk(pxInternalEventBuffer, TRC_INTERNAL_BUFFER_CHUNK_SIZE, &iBytesWritten) == TRC_FAIL)
-		{
-			return TRC_FAIL;
-		}
-
-		iCounter++;
-		/* This will do another loop if TRC_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_SIZE_LIMIT of data was transferred and we haven't already looped TRC_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_COUNT_LIMIT number of times */
-	} while (iBytesWritten >= (int32_t)(TRC_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_SIZE_LIMIT) && iCounter < (int32_t)(TRC_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_COUNT_LIMIT));
-
-	return TRC_SUCCESS;
+	
+	return xTraceMultiCoreEventBufferTransfer(pxInternalEventBuffer, piBytesWritten);
 }
 
 traceResult xTraceInternalEventBufferClear()

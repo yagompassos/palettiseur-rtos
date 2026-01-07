@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -14,20 +14,6 @@
 
 #if (TRC_USE_TRACEALYZER_RECORDER == 1)
 
-#ifndef TRC_KERNEL_PORT_HEAP_INIT
-#define TRC_KERNEL_PORT_HEAP_INIT(__size) 
-#endif
-
-/* Entry symbol length maximum check */
-#if ((TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH) > 28UL)
-#error Maximum entry symbol length is 28!
-#endif
-
-/* Entry symbol length minimum check */
-#if ((TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH) < 4UL)
-#error Minimum entry symbol length is 4!
-#endif
-
 typedef struct TraceHeader
 {
 	uint32_t uiPSF;
@@ -36,10 +22,10 @@ typedef struct TraceHeader
 	uint32_t uiOptions;
 	uint32_t uiNumCores;
 	uint32_t isrTailchainingThreshold;
+	char platformCfg[8];
 	uint16_t uiPlatformCfgPatch;
 	uint8_t uiPlatformCfgMinor;
 	uint8_t uiPlatformCfgMajor;
-	char platformCfg[8];
 } TraceHeader_t;
 
 /* The data structure for commands (a bit overkill) */
@@ -60,20 +46,20 @@ typedef struct TraceCommandType_t
 #endif
 
 /* Used to interpret the data format */
-#define TRACE_FORMAT_VERSION ((uint16_t)0x000E)
+#define TRACE_FORMAT_VERSION ((uint16_t)0x000A)
 
 /* Used to determine endian of data (big/little) */
 #define TRACE_PSF_ENDIANESS_IDENTIFIER ((uint32_t)0x50534600)
 
 #if (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_STATIC)
-static TraceRecorderData_t xRecorderData TRC_CFG_RECORDER_DATA_ATTRIBUTE; /*cstat !MISRAC2004-8.7 !MISRAC2012-Rule-8.9_a !MISRAC2012-Rule-8.9_b Suppress global variable check*/
-TraceRecorderData_t* pxTraceRecorderData TRC_CFG_RECORDER_DATA_ATTRIBUTE;
+static TraceRecorderData_t xRecorderData TRC_CFG_RECORDER_DATA_ATTRIBUTE;
+TraceRecorderData_t* pxTraceRecorderData = &xRecorderData;
 #else
 /* If using DYNAMIC or CUSTOM allocation */
 TraceRecorderData_t* pxTraceRecorderData TRC_CFG_RECORDER_DATA_ATTRIBUTE;
 #endif
 
-static TraceHeader_t* pxHeader TRC_CFG_RECORDER_DATA_ATTRIBUTE; /*cstat !MISRAC2004-8.7 !MISRAC2012-Rule-8.9_a !MISRAC2012-Rule-8.9_b Suppress global variable check*/
+static TraceHeader_t* pxHeader;
 
 /*******************************************************************************
 * RecorderInitialized
@@ -88,7 +74,7 @@ static TraceHeader_t* pxHeader TRC_CFG_RECORDER_DATA_ATTRIBUTE; /*cstat !MISRAC2
 * value.
 ******************************************************************************/
 #if (TRC_CFG_RECORDER_DATA_INIT != 0)
-uint32_t RecorderInitialized = 0u;
+uint32_t RecorderInitialized = 0;
 #else /* (TRC_CFG_RECORDER_DATA_INIT != 0) */
 uint32_t RecorderInitialized TRC_CFG_RECORDER_DATA_ATTRIBUTE;
 #endif /* (TRC_CFG_RECORDER_DATA_INIT != 0) */
@@ -115,18 +101,16 @@ static void prvTraceStoreEntryTable(void);
 static void prvTraceStoreStartEvent(void);
 
 /* Checks if the provided command is a valid command */
-static int32_t prvIsValidCommand(const TraceCommand_t* const cmd);
+static int prvIsValidCommand(TraceCommand_t* cmd);
 
 /* Executed the received command (Start or Stop) */
-static void prvProcessCommand(const TraceCommand_t* const cmd);
+static void prvProcessCommand(TraceCommand_t* cmd);
 
 /* Internal function for starting the recorder */
 static void prvSetRecorderEnabled(void);
 
 /* Internal function for stopping the recorder */
 static void prvSetRecorderDisabled(void);
-
-static TraceUnsignedBaseType_t prvIs64bit(void);
 
 /******************************************************************************
 * xTraceInitialize
@@ -140,42 +124,21 @@ static TraceUnsignedBaseType_t prvIs64bit(void);
 ******************************************************************************/
 traceResult xTraceInitialize(void)
 {
-	TraceUnsignedBaseType_t i;
-	TRC_ASSERT_EQUAL_SIZE(TraceUnsignedBaseType_t, TraceBaseType_t);
-
-	/* TraceUnsignedBaseType_t is used to store handles (addresses) */
-	TRC_ASSERT_EQUAL_SIZE(TraceUnsignedBaseType_t, TraceHandleBaseType_t);
+	TRC_ASSERT_EQUAL_SIZE(TraceRecorderDataBuffer_t, TraceRecorderData_t);
 	
-	if (RecorderInitialized != 0u)
+	if (RecorderInitialized != 0)
 	{
 		return TRC_SUCCESS;
 	}
 
-	TRC_PORT_SPECIFIC_INIT();
-#if (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_STATIC)
-	pxTraceRecorderData = &xRecorderData;
-#elif (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_DYNAMIC)
-	/* Initialize heap */
-	TRC_KERNEL_PORT_HEAP_INIT(sizeof(TraceRecorderData_t));
-
-	/* Allocate data */
-	pxTraceRecorderData = TRC_KERNEL_PORT_HEAP_MALLOC(sizeof(TraceRecorderData_t));
+#if (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_DYNAMIC)
+	pxRecorderData = TRC_MALLOC(sizeof(TraceRecorderData_t));
 #endif
 
 	/* These are set on init so they aren't overwritten by late initialization values. */
-	pxTraceRecorderData->uiSessionCounter = 0u;
-	pxTraceRecorderData->uiRecorderEnabled = 0u;
-	
-	for (i = 0; i < TRC_CFG_CORE_COUNT; i++)
-	{
-		pxTraceRecorderData->uxTraceSystemStates[i] = (TraceUnsignedBaseType_t)TRC_STATE_IN_STARTUP;
-	}
-	
-	/*cstat !MISRAC2004-13.7_b Suppress always false check*/
-	if (xTraceEntryIndexTableInitialize(&pxTraceRecorderData->xEntryIndexTableBuffer) == TRC_FAIL)
-	{
-		return TRC_FAIL;
-	}
+	pxTraceRecorderData->uiSessionCounter = 0;
+	pxTraceRecorderData->uiRecorderEnabled = 0;
+	pxTraceRecorderData->uiTraceSystemState = TRC_STATE_IN_STARTUP;
 
 #if (TRC_EXTERNAL_BUFFERS == 0)
 	if (xTraceHeaderInitialize(&pxTraceRecorderData->xHeaderBuffer) == TRC_FAIL)
@@ -183,7 +146,7 @@ traceResult xTraceInitialize(void)
 		return TRC_FAIL;
 	}
 
-	if (xTraceEntryTableInitialize(&pxTraceRecorderData->xEntryTable) == TRC_FAIL)
+	if (xTraceEntryTableInitialize(&pxTraceRecorderData->xEntryTableBuffer) == TRC_FAIL)
 	{
 		return TRC_FAIL;
 	}
@@ -193,19 +156,12 @@ traceResult xTraceInitialize(void)
 		return TRC_FAIL;
 	}
 #endif
-	
-	if (xTraceCounterInitialize(&pxTraceRecorderData->xCounterBuffer) == TRC_FAIL)
-	{
-		return TRC_FAIL;
-	}
 
-	/*cstat !MISRAC2004-13.7_b !MISRAC2012-Rule-14.3_b Suppress always false check*/
 	if (xTraceStackMonitorInitialize(&pxTraceRecorderData->xStackMonitorBuffer) == TRC_FAIL)
 	{
 		return TRC_FAIL;
 	}
 
-	/*cstat !MISRAC2004-13.7_b !MISRAC2012-Rule-14.3_b Suppress always false check*/
 	if (xTraceStreamPortInitialize(&pxTraceRecorderData->xStreamPortBuffer) == TRC_FAIL)
 	{
 		return TRC_FAIL;
@@ -217,12 +173,6 @@ traceResult xTraceInitialize(void)
 	}
 
 	if (xTraceDiagnosticsInitialize(&pxTraceRecorderData->xDiagnosticsBuffer) == TRC_FAIL)
-	{
-		return TRC_FAIL;
-	}
-
-	/*cstat !MISRAC2004-13.7_b Suppress always false check*/
-	if (xTraceExtensionInitialize(&pxTraceRecorderData->xExtensionBuffer) == TRC_FAIL)
 	{
 		return TRC_FAIL;
 	}
@@ -247,7 +197,7 @@ traceResult xTraceInitialize(void)
 		return TRC_FAIL;
 	}
 
-	if (xTraceISRInitialize(&pxTraceRecorderData->xISRBuffer) == TRC_FAIL)
+	if (xTraceISRInitialize(&pxTraceRecorderData->xISRInfoBuffer) == TRC_FAIL)
 	{
 		return TRC_FAIL;
 	}
@@ -257,114 +207,69 @@ traceResult xTraceInitialize(void)
 		return TRC_FAIL;
 	}
 
-	/*cstat !MISRAC2004-13.7_b !MISRAC2012-Rule-14.3_b Suppress always false check*/
 	if (xTraceKernelPortInitialize(&pxTraceRecorderData->xKernelPortBuffer) == TRC_FAIL)
 	{
 		return TRC_FAIL;
 	}
-
-	pxTraceRecorderData->reserved = 0xFFFFFFFFUL;
 
 	xTraceSetComponentInitialized(TRC_RECORDER_COMPONENT_CORE);
 
 	return TRC_SUCCESS;
 }
 
-/* Do this in function to avoid unreachable code warnings */
-traceResult prvVerifySizeAlignment(uint32_t ulSize)
-{
-	return (ulSize % sizeof(TraceUnsignedBaseType_t)) == 0 ? TRC_SUCCESS : TRC_FAIL;
-}
-
 traceResult xTraceHeaderInitialize(TraceHeaderBuffer_t *pxBuffer)
 {
 	uint32_t i;
-	const char* platform_cfg = TRC_PLATFORM_CFG; /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
+	char* platform_cfg = TRC_PLATFORM_CFG;
 
 	TRC_ASSERT_EQUAL_SIZE(TraceHeaderBuffer_t, TraceHeader_t);
 
-	if (pxBuffer == (void*)0)
+	if (pxBuffer == 0)
 	{
 		return TRC_FAIL;
 	}
 
-	if (prvVerifySizeAlignment(sizeof(TraceStreamPortBuffer_t)) == TRC_FAIL)
-	{
-		/* TraceStreamPortBuffer_t size is not aligned to TraceUnsignedBaseType_t */
-		return TRC_FAIL;
-	}
-
-	if (prvVerifySizeAlignment(sizeof(TraceEventDataTable_t)) == TRC_FAIL)
-	{
-		/* TraceEventDataTable_t size is not aligned to TraceUnsignedBaseType_t */
-		return TRC_FAIL;
-	}
-
-	if (prvVerifySizeAlignment(sizeof(TraceKernelPortDataBuffer_t)) == TRC_FAIL)
-	{
-		/* TraceKernelPortDataBuffer_t size is not aligned to TraceUnsignedBaseType_t */
-		return TRC_FAIL;
-	}
-
-	pxHeader = (TraceHeader_t*)pxBuffer; /*cstat !MISRAC2004-11.4 !MISRAC2012-Rule-11.3 Suppress conversion between pointer types checks*/
+	pxHeader = (TraceHeader_t*)pxBuffer;
 
 	pxHeader->uiPSF = TRACE_PSF_ENDIANESS_IDENTIFIER;
 	pxHeader->uiVersion = TRACE_FORMAT_VERSION;
 	pxHeader->uiPlatform = TRACE_KERNEL_VERSION;
 
-	for (i = 0u; i < (uint32_t)(TRC_PLATFORM_CFG_LENGTH); i++)
+	for (i = 0; i < TRC_PLATFORM_CFG_LENGTH; i++)
 	{
-		pxHeader->platformCfg[i] = platform_cfg[i]; /*cstat !MISRAC2004-17.4_b We need to access every character in the string*/
-		if (platform_cfg[i] == (char)0) /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/ /*cstat !MISRAC2004-17.4_b We need to access every character in the string*/
+		pxHeader->platformCfg[i] = platform_cfg[i];
+		if (platform_cfg[i] == 0)
 		{
 			break;
 		}
 	}
-	pxHeader->uiPlatformCfgPatch = (uint16_t)TRC_PLATFORM_CFG_PATCH;
-	pxHeader->uiPlatformCfgMinor = (uint8_t)TRC_PLATFORM_CFG_MINOR;
-	pxHeader->uiPlatformCfgMajor = (uint8_t)TRC_PLATFORM_CFG_MAJOR;
-	pxHeader->uiNumCores = (uint32_t)TRC_CFG_CORE_COUNT;
-	
-#ifdef TRC_STREAM_PORT_MULTISTREAM_SUPPORT
-	pxHeader->uiNumCores |= 2 << 8;
-#else
-	pxHeader->uiNumCores |= 3 << 8;
-#endif
-	
+	pxHeader->uiPlatformCfgPatch = TRC_PLATFORM_CFG_PATCH;
+	pxHeader->uiPlatformCfgMinor = TRC_PLATFORM_CFG_MINOR;
+	pxHeader->uiPlatformCfgMajor = TRC_PLATFORM_CFG_MAJOR;
+	pxHeader->uiNumCores = TRC_CFG_CORE_COUNT;
 	pxHeader->isrTailchainingThreshold = TRC_CFG_ISR_TAILCHAINING_THRESHOLD;
 
 	/* Lowest bit used for TRC_IRQ_PRIORITY_ORDER */
-	pxHeader->uiOptions = (((uint32_t)(TRC_IRQ_PRIORITY_ORDER)) << 0);
+	pxHeader->uiOptions = ((TRC_IRQ_PRIORITY_ORDER) << 0);
 
 	/* 3rd bit used for TRC_CFG_TEST_MODE */
-	pxHeader->uiOptions |= (((uint32_t)(TRC_CFG_TEST_MODE)) << 2);
-
-	/* 4th bit used for 64-bit*/
-	if (prvIs64bit()) /* Call helper function to avoid "unreachable code" */
-	{
-		pxHeader->uiOptions |= (1 << 3);
-	}
+	pxHeader->uiOptions |= ((TRC_CFG_TEST_MODE) << 2);
 
 	return TRC_SUCCESS;
 }
 
 traceResult xTraceEnable(uint32_t uiStartOption)
 {
-	TraceCommand_t xCommand = { 0 };
-	int32_t iBytes;
+	TraceCommand_t xCommand;
+	int32_t iBytes = 0;
 
 	if (xTraceInitialize() == TRC_FAIL)
 	{
 		return TRC_FAIL;
 	}
 
-	/*cstat !MISRAC2004-13.7_b !MISRAC2012-Rule-14.3_b Suppress always false check*/
-	if (xTraceStreamPortOnEnable(uiStartOption) == TRC_FAIL)
-	{
-		return TRC_FAIL;
-	}
+	xTraceStreamPortOnEnable(uiStartOption);
 
-	/*cstat !MISRAC2004-13.7_b !MISRAC2012-Rule-14.3_b Suppress always false check*/
 	if (xTraceKernelPortEnable() == TRC_FAIL)
 	{
 		return TRC_FAIL;
@@ -379,32 +284,37 @@ traceResult xTraceEnable(uint32_t uiStartOption)
 
 			if (xTraceStreamPortReadData(&xCommand, sizeof(TraceCommand_t), (int32_t*)&iBytes) == TRC_FAIL)
 			{
-				(void)xTraceWarning(TRC_WARNING_STREAM_PORT_READ);
+				xTraceWarning(TRC_WARNING_STREAM_PORT_READ);
 			}
 
-			if ((uint32_t)iBytes == sizeof(TraceCommand_t))
+			if (iBytes == sizeof(TraceCommand_t))
 			{
-				if (prvIsValidCommand(&xCommand) != 0)
+				if (prvIsValidCommand(&xCommand))
 				{
+					if (xCommand.cmdCode == CMD_SET_ACTIVE && xCommand.param1 == 1)
+					{
+						/* On start, init and reset the timestamping */
+						TRC_PORT_SPECIFIC_INIT();
+					}
+
 					prvProcessCommand(&xCommand);
 				}
 			}
-		} while (pxTraceRecorderData->uiRecorderEnabled == 0u);
+		} while (pxTraceRecorderData->uiRecorderEnabled == 0);
 	}
-	else if (uiStartOption == (uint32_t)(TRC_START))
+	else if (uiStartOption == TRC_START)
 	{
 		/* We start streaming directly - this assumes that the host interface is ready! */
+		TRC_PORT_SPECIFIC_INIT();
+
 		xCommand.cmdCode = CMD_SET_ACTIVE;
-		xCommand.param1 = 1u;
+		xCommand.param1 = 1;
 		prvProcessCommand(&xCommand);
 	}
 	else if (uiStartOption == TRC_START_FROM_HOST)
 	{
 		/* We prepare the system to receive commands from host, but let system resume execution until that happens */
-	}
-	else
-	{
-		return TRC_FAIL;
+		TRC_PORT_SPECIFIC_INIT();
 	}
 
 	return TRC_SUCCESS;
@@ -414,20 +324,20 @@ traceResult xTraceDisable(void)
 {
 	prvSetRecorderDisabled();
 
-	(void)xTraceStreamPortOnDisable();
+	xTraceStreamPortOnDisable();
 	
 	return TRC_SUCCESS;
 }
 
 #if (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_CUSTOM)
-traceResult xTraceSetBuffer(TraceRecorderData_t* pxBuffer)
+traceResult xTraceSetBuffer(TraceRecorderDataBuffer_t* pxBuffer)
 {
 	if (pxBuffer == 0)
 	{
 		return TRC_FAIL;
 	}
 	
-	pxTraceRecorderData = pxBuffer;
+	pxTraceRecorderData = (TraceRecorderData_t*)pxBuffer;
 
 	return TRC_SUCCESS;
 }
@@ -435,7 +345,7 @@ traceResult xTraceSetBuffer(TraceRecorderData_t* pxBuffer)
 
 traceResult xTraceGetEventBuffer(void **ppvBuffer, TraceUnsignedBaseType_t *puiSize)
 {
-	if ((pxTraceRecorderData == (void*)0) || (ppvBuffer == (void*)0) || (puiSize == (void*)0))
+	if (pxTraceRecorderData == 0 || ppvBuffer == 0 || puiSize == 0)
 	{
 		return TRC_FAIL;
 	}
@@ -449,43 +359,42 @@ traceResult xTraceGetEventBuffer(void **ppvBuffer, TraceUnsignedBaseType_t *puiS
 
 traceResult xTraceTzCtrl(void)
 {
-	TraceCommand_t xCommand = { 0 };
-	int32_t iRxBytes;
+	TraceCommand_t xCommand;
+	int32_t iBytes = 0;
 	
 	do
 	{
 		/* Listen for new commands */
-		iRxBytes = 0;
-		if (xTraceStreamPortReadData(&xCommand, sizeof(TraceCommand_t), &iRxBytes) == TRC_FAIL)
+		iBytes = 0;
+		if (xTraceStreamPortReadData(&xCommand, sizeof(TraceCommand_t), &iBytes) == TRC_FAIL)
 		{
 			/* The connection has failed, stop tracing */
-			(void)xTraceDisable();
+			xTraceDisable();
 
 			return TRC_FAIL;
 		}
 
-		if ((uint32_t)iRxBytes == sizeof(TraceCommand_t))
+		if (iBytes == sizeof(TraceCommand_t))
 		{
-			if (prvIsValidCommand(&xCommand) != 0)
+			if (prvIsValidCommand(&xCommand))
 			{
 				prvProcessCommand(&xCommand); /* Start or Stop currently... */
 			}
 		}
 
-		if (xTraceIsRecorderEnabled())
-		{
-			xTraceInternalEventBufferTransfer();
-		}
+#if (TRC_USE_INTERNAL_BUFFER == 1)
+		xTraceInternalEventBufferTransfer(&iBytes);
+#endif
 
 		/* If there was data sent or received (bytes != 0), loop around and repeat, if there is more data to send or receive.
 		Otherwise, step out of this loop and sleep for a while. */
 
-	} while (iRxBytes > 0);
+	} while (iBytes != 0);
 
 	if (xTraceIsRecorderEnabled())
 	{
-		(void)xTraceDiagnosticsCheckStatus();
-		(void)xTraceStackMonitorReport();
+		xTraceDiagnosticsCheckStatus();
+		xTraceStackMonitorReport();
 	}
 
 	return TRC_SUCCESS;
@@ -504,45 +413,32 @@ void vTraceSetFilterMask(uint16_t filterMask)
 /******************************************************************************/
 /*** INTERNAL FUNCTIONS *******************************************************/
 /******************************************************************************/
-
-static TraceUnsignedBaseType_t prvIs64bit(void)
-{
-	return sizeof(TraceUnsignedBaseType_t) == 8;
-}
-
 /* Internal function for starting/stopping the recorder. */
 static void prvSetRecorderEnabled(void)
 {
-	TraceUnsignedBaseType_t uxTimestampFrequency = 0u;
-	uint32_t uiTimestampPeriod = 0u;
+	uint32_t timestampFrequency = 0;
 	
 	TRACE_ALLOC_CRITICAL_SECTION();
 	
-	if (pxTraceRecorderData->uiRecorderEnabled == 1u)
+	if (pxTraceRecorderData->uiRecorderEnabled == 1)
 	{
 		return;
 	}
 
-	(void)xTraceTimestampGetFrequency(&uxTimestampFrequency);
-	/* If not overridden using xTraceTimestampSetFrequency(...), use default value */
-	if (uxTimestampFrequency == 0u)
+	xTraceTimestampGetFrequency(&timestampFrequency);
+	/* If not overridden using 	xTraceTimestampSetFrequency(...), use default value */
+	if (timestampFrequency == 0)
 	{
-		(void)xTraceTimestampSetFrequency((TraceUnsignedBaseType_t)(TRC_HWTC_FREQ_HZ));
-	}
-
-	(void)xTraceTimestampGetPeriod(&uiTimestampPeriod);
-	/* If not overridden using xTraceTimestampSetPeriod(...), use default value */
-	if (uiTimestampPeriod == 0u)
-	{
-		(void)xTraceTimestampSetPeriod((TraceUnsignedBaseType_t)(TRC_HWTC_PERIOD));
+		timestampFrequency = TRC_HWTC_FREQ_HZ;
+		xTraceTimestampSetFrequency(timestampFrequency);
 	}
 
 	TRACE_ENTER_CRITICAL_SECTION();
 
 	/* If the internal event buffer is used, we must clear it */
-	(void)xTraceInternalEventBufferClear();
+	xTraceInternalEventBufferClear();
 	
-	(void)xTraceStreamPortOnTraceBegin();
+	xTraceStreamPortOnTraceBegin();
 
 	prvTraceStoreHeader();
 	prvTraceStoreTimestampInfo();
@@ -551,7 +447,7 @@ static void prvSetRecorderEnabled(void)
 
 	pxTraceRecorderData->uiSessionCounter++;
 
-	pxTraceRecorderData->uiRecorderEnabled = 1u;
+	pxTraceRecorderData->uiRecorderEnabled = 1;
 
 	TRACE_EXIT_CRITICAL_SECTION();
 }
@@ -560,16 +456,16 @@ static void prvSetRecorderDisabled(void)
 {
 	TRACE_ALLOC_CRITICAL_SECTION();
 
-	if (pxTraceRecorderData->uiRecorderEnabled == 0u)
+	if (pxTraceRecorderData->uiRecorderEnabled == 0)
 	{
 		return;
 	}
 
 	TRACE_ENTER_CRITICAL_SECTION();
 	
-	pxTraceRecorderData->uiRecorderEnabled = 0u;
+	pxTraceRecorderData->uiRecorderEnabled = 0;
 
-	(void)xTraceStreamPortOnTraceEnd();
+	xTraceStreamPortOnTraceEnd();
 
 	TRACE_EXIT_CRITICAL_SECTION();
 }
@@ -582,7 +478,7 @@ static void prvTraceStoreHeader(void)
 
 	if (xTraceEventBeginRawOfflineBlocking(sizeof(TraceHeader_t), &xEventHandle) == TRC_SUCCESS)
 	{
-		xTraceEventAddData(xEventHandle, (TraceUnsignedBaseType_t*)pxHeader, sizeof(TraceHeader_t) / sizeof(TraceUnsignedBaseType_t));
+		xTraceEventAddData(xEventHandle, pxHeader, sizeof(TraceHeader_t));
 		xTraceEventEndOfflineBlocking(xEventHandle);
 	}
 }
@@ -591,10 +487,13 @@ static void prvTraceStoreHeader(void)
 static void prvTraceStoreTimestampInfo(void)
 {
 	TraceEventHandle_t xEventHandle;
+	uint32_t timestampFrequency = 0;
 
-	if (xTraceEventBeginRawOfflineBlocking(sizeof(TraceTimestampData_t), &xEventHandle) == TRC_SUCCESS)
+	xTraceTimestampGetFrequency(&timestampFrequency);
+
+	if (xTraceEventBeginRawOfflineBlocking(sizeof(TraceTimestampBuffer_t), &xEventHandle) == TRC_SUCCESS)
 	{
-		xTraceEventAddData(xEventHandle, (TraceUnsignedBaseType_t*)&pxTraceRecorderData->xTimestampBuffer, sizeof(TraceTimestampData_t) / sizeof(TraceUnsignedBaseType_t));
+		xTraceEventAddData(xEventHandle, &pxTraceRecorderData->xTimestampBuffer, sizeof(TraceTimestampBuffer_t));
 		xTraceEventEndOfflineBlocking(xEventHandle);
 	}
 }
@@ -608,87 +507,77 @@ static void prvTraceStoreEntryTable(void)
 	uint32_t uiEntryCount;
 	void *pvEntryAddress;
 
-	(void)xTraceEntryGetCount(&uiEntryCount);
+	xTraceEntryGetCount(&uiEntryCount);
 	
-	if (xTraceEventBeginRawOfflineBlocking(sizeof(TraceUnsignedBaseType_t) + sizeof(TraceUnsignedBaseType_t) + sizeof(TraceUnsignedBaseType_t), &xEventHandle) == TRC_SUCCESS)
+	if (xTraceEventBeginRawOfflineBlocking(sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t), &xEventHandle) == TRC_SUCCESS)
 	{
-		(void)xTraceEventAddUnsignedBaseType(xEventHandle, (TraceUnsignedBaseType_t)uiEntryCount);
-		(void)xTraceEventAddUnsignedBaseType(xEventHandle, TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE);
-		(void)xTraceEventAddUnsignedBaseType(xEventHandle, TRC_ENTRY_TABLE_STATE_COUNT);
-		(void)xTraceEventEndOfflineBlocking(xEventHandle);
+		xTraceEventAdd32(xEventHandle, uiEntryCount);
+		xTraceEventAdd32(xEventHandle, TRC_ENTRY_TABLE_SLOT_SYMBOL_SIZE);
+		xTraceEventAdd32(xEventHandle, TRC_ENTRY_TABLE_STATE_COUNT);
+		xTraceEventEndOfflineBlocking(xEventHandle);
 	}
 	
 	for (i = 0; i < (TRC_ENTRY_TABLE_SLOTS); i++)
 	{
-		(void)xTraceEntryGetAtIndex(i, &xEntryHandle);
-		(void)xTraceEntryGetAddress(xEntryHandle, &pvEntryAddress);
+		xTraceEntryGetAtIndex(i, &xEntryHandle);
+		xTraceEntryGetAddress(xEntryHandle, &pvEntryAddress);
 		/* We only send used entry slots */
 		if (pvEntryAddress != 0)
 		{
 			/* Send entry */
 			if (xTraceEventBeginRawOfflineBlocking(sizeof(TraceEntry_t), &xEventHandle) == TRC_SUCCESS)
 			{
-				(void)xTraceEventAddData(xEventHandle, (TraceUnsignedBaseType_t*)xEntryHandle, sizeof(TraceEntry_t) / sizeof(TraceUnsignedBaseType_t));
-				(void)xTraceEventEndOfflineBlocking(xEventHandle);
+				xTraceEventAddData(xEventHandle, (void*)xEntryHandle, sizeof(TraceEntry_t));
+				xTraceEventEndOfflineBlocking(xEventHandle);
 			}
 		}
 	}
 }
 #endif /* (TRC_EXTERNAL_BUFFERS == 0) */
 
-static void prvTraceStoreStartEvent(void)
+static void prvTraceStoreStartEvent()
 {
-	TraceEventHandle_t xEventHandle = 0;
-	void* pvCurrentTask = (void*)0;
-	uint32_t i;
+	TraceEventHandle_t xEventHandle;
+	void* pvCurrentTask;
 
-	if (xTraceEventBeginOffline(PSF_EVENT_TRACE_START, sizeof(TraceUnsignedBaseType_t) * (TRC_CFG_CORE_COUNT), &xEventHandle) == TRC_SUCCESS)
+	xTraceTaskGetCurrent(&pvCurrentTask);
+
+	if (xTraceEventBeginOffline(PSF_EVENT_TRACE_START, sizeof(uint32_t), &xEventHandle) == TRC_SUCCESS)
 	{
-		for (i = 0; i < (TRC_CFG_CORE_COUNT); i++)
-		{
-
-			(void)xTraceTaskGetCurrentOnCore(i, &pvCurrentTask);
-			(void)xTraceEventAddUnsignedBaseType(xEventHandle, (TraceUnsignedBaseType_t)pvCurrentTask);  /*cstat !MISRAC2004-11.3 !MISRAC2012-Rule-11.4 !MISRAC2012-Rule-11.6 Suppress conversion from pointer to integer check*/
-		}
-		(void)xTraceEventEndOffline(xEventHandle);
+		xTraceEventAdd32(xEventHandle, (uint32_t)pvCurrentTask);
+		xTraceEventEndOffline(xEventHandle);
 	}
 }
 
 /* Checks if the provided command is a valid command */
-static int32_t prvIsValidCommand(const TraceCommand_t* const cmd)
+static int prvIsValidCommand(TraceCommand_t* cmd)
 {
-  	uint16_t checksum = (uint16_t)0xFFFFU - (uint16_t)(unsigned char)(cmd->cmdCode + /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
+  	uint16_t checksum = (uint16_t)(0xFFFF - (	cmd->cmdCode +
 												cmd->param1 +
 												cmd->param2 +
 												cmd->param3 +
 												cmd->param4 +
-												cmd->param5);
+												cmd->param5));
 
-	if (cmd->checksumMSB != (unsigned char)(checksum >> 8)) /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
-	{
+	if (cmd->checksumMSB != (unsigned char)(checksum >> 8))
 		return 0;
-	}
 
-	if (cmd->checksumLSB != (unsigned char)(checksum & 0xFFU)) /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
-	{
+	if (cmd->checksumLSB != (unsigned char)(checksum & 0xFF))
 		return 0;
-	}
 
-	if (cmd->cmdCode > (unsigned char)(CMD_LAST_COMMAND)) /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
-	{
+	if (cmd->cmdCode > CMD_LAST_COMMAND)
 		return 0;
-	}
 
 	return 1;
 }
 
 /* Executed the received command (Start or Stop) */
-static void prvProcessCommand(const TraceCommand_t* const cmd)
+static void prvProcessCommand(TraceCommand_t* cmd)
 {
   	switch(cmd->cmdCode)
 	{
 		case CMD_SET_ACTIVE:
-			if (cmd->param1 == 1u)
+			if (cmd->param1 == 1)
 			{
 				prvSetRecorderEnabled();
 			}
@@ -702,6 +591,6 @@ static void prvProcessCommand(const TraceCommand_t* const cmd)
 	}
 }
 
-#endif
+#endif /* (TRC_USE_TRACEALYZER_RECORDER == 1) */
 
-#endif
+#endif /*(TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)*/

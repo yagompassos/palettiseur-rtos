@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -19,7 +19,7 @@
 
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
 
-#include <trcTypes.h>
+#include "trcTypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,11 +68,12 @@ inline TraceBaseType_t prvTraceAssertCheckCondition(TraceBaseType_t condition)
 
 #endif
 
+#define TRC_ASSERT_BUFFER_SIZE (sizeof(TraceEntryHandle_t))
 
-typedef struct TraceAssertData /* Aligned */
+typedef struct TraceAssertBuffer
 {
-	TraceEntryHandle_t xEntry;
-} TraceAssertData_t;
+	uint8_t buffer[TRC_ASSERT_BUFFER_SIZE];
+} TraceAssertBuffer_t;
 
 /**
  * @internal Initializes assert system
@@ -82,7 +83,7 @@ typedef struct TraceAssertData /* Aligned */
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceAssertInitialize(TraceAssertData_t *pxBuffer);
+traceResult xTraceAssertInitialize(TraceAssertBuffer_t *pxBuffer);
 
 /**
  * @internal Creates an assert
@@ -118,10 +119,10 @@ traceResult xTraceAssertGet(TraceStringHandle_t* pxFileNameStringHandle, TraceUn
 
 #define TRC_ASSERT_EQUAL_SIZE(x, y)
 
-typedef struct TraceAssertData
+typedef struct TraceAssertBuffer
 {
-	TraceUnsignedBaseType_t buffer[1];
-} TraceAssertData_t;
+	uint32_t buffer[1];
+} TraceAssertBuffer_t;
 
 #define xTraceAssertInitialize(pxBuffer) ((void)pxBuffer, TRC_SUCCESS)
 

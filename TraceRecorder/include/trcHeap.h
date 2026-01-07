@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -25,15 +25,11 @@
 
 #if (TRC_USE_HEAPS == 1)
 
-#include <trcTypes.h>
+#include "trcTypes.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define TRC_HEAP_STATE_INDEX_CURRENT		0u
-#define TRC_HEAP_STATE_INDEX_HIGHWATERMARK	1u
-#define TRC_HEAP_STATE_INDEX_MAX			2u
 
 /**
  * @defgroup trace_heap_apis Trace Heap APIs
@@ -56,7 +52,7 @@ traceResult xTraceHeapCreate(const char *szName, TraceUnsignedBaseType_t uxCurre
 /**
  * @brief Signals trace heap alloc.
  * 
- * @param[in] xHeapHandle Trace heap handle.
+ * @param[in] xHeapHandle Pointer to initialized trace heap handle.
  * @param[in] pvAddress Address. 
  * @param[in] uxSize Size.
  * 
@@ -68,7 +64,7 @@ traceResult xTraceHeapAlloc(TraceHeapHandle_t xHeapHandle, void *pvAddress, Trac
 /**
  * @brief Signals trace heap free.
  * 
- * @param[in] xHeapHandle Trace heap handle.
+ * @param[in] xHeapHandle Pointer to initialized trace heap handle.
  * @param[in] pvAddress Address.
  * @param[in] uxSize Size.
  * 
@@ -80,68 +76,35 @@ traceResult xTraceHeapFree(TraceHeapHandle_t xHeapHandle, void* pvAddress, Trace
 /**
  * @brief Gets trace heap current allocation size.
  * 
- * @param[in] xHeapHandle Trace heap handle.
+ * @param[in] xHeapHandle Pointer to initialized trace heap handle.
  * @param[out] puxCurrent Current.
  * 
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-#define xTraceHeapGetCurrent(xHeapHandle, puxCurrent) xTraceEntryGetState(xHeapHandle, TRC_HEAP_STATE_INDEX_CURRENT, puxCurrent)
-
-/**
- * @brief Sets trace heap current allocation size.
- *
- * @param[in] xHeapHandle Trace heap handle.
- * @param[in] uxCurrent Current.
- *
- * @retval TRC_FAIL Failure
- * @retval TRC_SUCCESS Success
- */
-#define xTraceHeapSetCurrent(xHeapHandle, uxCurrent) xTraceEntrySetState(xHeapHandle, TRC_HEAP_STATE_INDEX_CURRENT, uxCurrent)
+traceResult xTraceHeapGetCurrent(TraceHeapHandle_t xHeapHandle, TraceUnsignedBaseType_t *puxCurrent);
 
 /**
  * @brief Gets trace heap high water mark.
  * 
- * @param[in] xHeapHandle Trace heap handle.
+ * @param[in] xHeapHandle Pointer to initialized trace heap handle.
  * @param[out] puxHighWaterMark High water mark.
  * 
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-#define xTraceHeapGetHighWaterMark(xHeapHandle, puxHighWaterMark) xTraceEntryGetState(xHeapHandle, TRC_HEAP_STATE_INDEX_HIGHWATERMARK, puxHighWaterMark)
-
-/**
- * @brief Sets trace heap high water mark.
- *
- * @param[in] xHeapHandle Trace heap handle.
- * @param[in] uxHighWaterMark High water mark.
- *
- * @retval TRC_FAIL Failure
- * @retval TRC_SUCCESS Success
- */
-#define xTraceHeapSetHighWaterMark(xHeapHandle, uxHighWaterMark) xTraceEntrySetState(xHeapHandle, TRC_HEAP_STATE_INDEX_HIGHWATERMARK, uxHighWaterMark)
+traceResult xTraceHeapGetHighWaterMark(TraceHeapHandle_t xHeapHandle, TraceUnsignedBaseType_t *puxHighWaterMark);
 
 /**
  * @brief Gets trace heap max size.
  * 
- * @param[in] xHeapHandle Trace heap handle.
+ * @param[in] xHeapHandle Pointer to initialized trace heap handle.
  * @param[out] puxMax Max.
  * 
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-#define xTraceHeapGetMax(xHeapHandle, puxMax) xTraceEntryGetState(xHeapHandle, TRC_HEAP_STATE_INDEX_MAX, puxMax)
-
-/**
- * @brief Sets trace heap max size.
- *
- * @param[in] xHeapHandle Trace heap handle.
- * @param[in] uxMax Max heap size.
- *
- * @retval TRC_FAIL Failure
- * @retval TRC_SUCCESS Success
- */
-#define xTraceHeapSetMax(xHeapHandle, uxMax) xTraceEntrySetState(xHeapHandle, TRC_HEAP_STATE_INDEX_MAX, uxMax)
+traceResult xTraceHeapGetMax(TraceHeapHandle_t xHeapHandle, TraceUnsignedBaseType_t *puxMax);
 
 /** @} */
 

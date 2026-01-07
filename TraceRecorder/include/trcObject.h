@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -19,7 +19,7 @@
 
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
 
-#include <trcTypes.h>
+#include "trcTypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +45,7 @@ extern "C" {
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceObjectRegisterInternal(uint32_t uiEventCode, void* const pvObject, const char* szName, TraceUnsignedBaseType_t uxStateCount, const TraceUnsignedBaseType_t uxStates[], TraceUnsignedBaseType_t uxOptions, TraceObjectHandle_t* pxObjectHandle);
+traceResult xTraceObjectRegisterInternal(uint32_t uiEventCode, void* pvObject, const char* szName, TraceUnsignedBaseType_t uxStateCount, TraceUnsignedBaseType_t uxStates[], TraceUnsignedBaseType_t uxOptions, TraceObjectHandle_t* pxObjectHandle);
 
 /**
  * @brief Registers trace object.
@@ -59,7 +59,7 @@ traceResult xTraceObjectRegisterInternal(uint32_t uiEventCode, void* const pvObj
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceObjectRegister(uint32_t uiEventCode, void* const pvObject, const char* szName, TraceUnsignedBaseType_t uxState, TraceObjectHandle_t *pxObjectHandle);
+traceResult xTraceObjectRegister(uint32_t uiEventCode, void *pvObject, const char* szName, TraceUnsignedBaseType_t uxState, TraceObjectHandle_t *pxObjectHandle);
 
 /**
  * @brief Unregisters trace object.

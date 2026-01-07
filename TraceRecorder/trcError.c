@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -15,23 +15,32 @@
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
 
 /* We skip the slot for TRC_ERROR_NONE so error code 1 is the first bit */
-#define GET_ERROR_WARNING_FLAG(errorCode) (pxErrorInfo->uiErrorAndWarningFlags & (1UL << ((errorCode) - 1UL)))
-#define SET_ERROR_WARNING_FLAG(errorCode) (pxErrorInfo->uiErrorAndWarningFlags |= (1UL << ((errorCode) - 1UL)))
+#define GET_ERROR_WARNING_FLAG(errorCode) (pxErrorInfo->uiErrorAndWarningFlags & (1 << ((errorCode) - 1)))
+#define SET_ERROR_WARNING_FLAG(errorCode) (pxErrorInfo->uiErrorAndWarningFlags |= (1 << ((errorCode) - 1)))
 
-static traceResult prvTraceErrorPrint(uint32_t uiErrorCode);
-static traceResult prvTraceErrorGetDescription(uint32_t uiErrorCode, const char** pszDesc);
+traceResult prvTraceErrorPrint(uint32_t uiErrorCode);
+traceResult prvTraceErrorGetDescription(uint32_t uiErrorCode, const char** pszDesc);
 
-static TraceErrorData_t* pxErrorInfo TRC_CFG_RECORDER_DATA_ATTRIBUTE;
-
-traceResult xTraceErrorInitialize(TraceErrorData_t* pxBuffer)
+typedef struct TraceErrorInfo
 {
+	uint32_t uiErrorAndWarningFlags;
+	uint32_t uiErrorCode;
+	TraceStringHandle_t xWarningChannel;
+} TraceErrorInfo_t;
+
+static TraceErrorInfo_t* pxErrorInfo;
+
+traceResult xTraceErrorInitialize(TraceErrorBuffer_t* pxBuffer)
+{
+	TRC_ASSERT_EQUAL_SIZE(TraceErrorBuffer_t, TraceErrorInfo_t);
+
 	/* This should never fail */
-	TRC_ASSERT(pxBuffer != (void*)0);
+	TRC_ASSERT(pxBuffer != 0);
 
-	pxErrorInfo = pxBuffer;
+	pxErrorInfo = (TraceErrorInfo_t*)pxBuffer;
 
-	pxErrorInfo->uiErrorAndWarningFlags = 0u;
-	pxErrorInfo->uiErrorCode = 0u;
+	pxErrorInfo->uiErrorAndWarningFlags = 0;
+	pxErrorInfo->uiErrorCode = 0;
 	pxErrorInfo->xWarningChannel = 0;
 
 	xTraceSetComponentInitialized(TRC_RECORDER_COMPONENT_ERROR);
@@ -39,30 +48,32 @@ traceResult xTraceErrorInitialize(TraceErrorData_t* pxBuffer)
 	return TRC_SUCCESS;
 }
 
+/* Called on warnings, when the recording can continue. */
 traceResult xTraceWarning(uint32_t uiErrorCode)
 {
 	/* Probably good to verify this */
-	if (xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR) == 0U)
+	if (!xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR))
 	{
 		/* If not initialized */
 		return TRC_FAIL;
 	}
 	
-	if (GET_ERROR_WARNING_FLAG(uiErrorCode) == 0u)
+	if (GET_ERROR_WARNING_FLAG(uiErrorCode) == 0)
 	{
 		/* Will never reach this point more than once per warning type, since we verify if uiErrorAndWarningFlags[uiErrorCode] has already been set */
 		SET_ERROR_WARNING_FLAG(uiErrorCode);
 
-		(void)prvTraceErrorPrint(uiErrorCode);
+		prvTraceErrorPrint(uiErrorCode);
 	}
 
 	return TRC_SUCCESS;
 }
 
+/* Called on critical errors in the recorder. Stops the recorder! */
 traceResult xTraceError(uint32_t uiErrorCode)
 {
 	/* Probably good to verify this */
-	if (xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR) == 0U)
+	if (!xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR))
 	{
 		return TRC_FAIL;
 	}
@@ -75,37 +86,46 @@ traceResult xTraceError(uint32_t uiErrorCode)
 
 		if (prvTraceErrorPrint(uiErrorCode) == TRC_FAIL)
 		{
-			(void)xTraceDisable();
+			xTraceDisable();
 			
 			return TRC_FAIL;
 		}
 		
-		(void)xTracePrint(pxErrorInfo->xWarningChannel, "Recorder stopped in xTraceError(...)!");
-		(void)xTraceDisable();
+		xTracePrint(pxErrorInfo->xWarningChannel, "Recorder stopped in xTraceError(...)!");
+		xTraceDisable();
 	}
 
 	return TRC_SUCCESS;
 }
 
-/*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
+/*******************************************************************************
+ * xTraceErrorGetLast
+ *
+ * Returns the last error or warning, as a string, or NULL if none.
+ *****************************************************************************/
 traceResult xTraceErrorGetLast(const char **pszError)
 {
 	/* Probably good to verify this */
-	if (xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR) == 0U)
+	if (!xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR))
 	{
 		return TRC_FAIL;
 	}
 
 	/* This should never fail */
-	TRC_ASSERT(pszError != (void*)0);
+	TRC_ASSERT(pszError != 0);
 	
 	return prvTraceErrorGetDescription(pxErrorInfo->uiErrorCode, pszError);
 }
 
+/*******************************************************************************
+ * xTraceErrorClear
+ *
+ * Clears any errors.
+ *****************************************************************************/
 traceResult xTraceErrorClear(void)
 {
 	/* Probably good to verify this */
-	if (xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR) == 0U)
+	if (!xTraceIsComponentInitialized(TRC_RECORDER_COMPONENT_ERROR))
 	{
 		/* If not initialized */
 		return TRC_FAIL;
@@ -116,12 +136,10 @@ traceResult xTraceErrorClear(void)
 	return TRC_SUCCESS;
 }
 
-static traceResult prvTraceErrorPrint(uint32_t uiErrorCode)
+/* Returns the error or warning, as a string, or NULL if none. */
+traceResult prvTraceErrorPrint(uint32_t uiErrorCode)
 {
-	const char* szDesc; /*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
-	TraceUnsignedBaseType_t uxLineNumber;
-	TraceStringHandle_t xFileName;
-	
+	const char* szDesc;
 	/* Note: the error messages are short, in order to fit in a User Event.
 	Instead, the users can read more in the below comments.*/
 
@@ -140,7 +158,7 @@ static traceResult prvTraceErrorPrint(uint32_t uiErrorCode)
 		}
 	}
 
-	(void)prvTraceErrorGetDescription(uiErrorCode, &szDesc);
+	prvTraceErrorGetDescription(uiErrorCode, &szDesc);
 
 	switch (uiErrorCode)
 	{
@@ -157,32 +175,37 @@ static traceResult prvTraceErrorPrint(uint32_t uiErrorCode)
 	case TRC_ERROR_DWT_NOT_SUPPORTED:
 	case TRC_ERROR_DWT_CYCCNT_NOT_SUPPORTED:
 	case TRC_ERROR_TZCTRLTASK_NOT_CREATED:
-		(void)xTracePrint(pxErrorInfo->xWarningChannel, szDesc);
+		xTracePrint(pxErrorInfo->xWarningChannel, szDesc);
 		break;
 
 	case TRC_ERROR_ASSERT:
 		/* A TRC_ASSERT has triggered */
-		if (xTraceAssertGet(&xFileName, &uxLineNumber) == TRC_FAIL)
 		{
-			return TRC_FAIL;
+			TraceUnsignedBaseType_t uxLineNumber;
+			TraceStringHandle_t xFileName;
+
+			if (xTraceAssertGet(&xFileName, &uxLineNumber) == TRC_FAIL)
+			{
+				return TRC_FAIL;
+			}
+
+			xTracePrintF(pxErrorInfo->xWarningChannel, szDesc, xFileName, (uint32_t)uxLineNumber);
+
+			return TRC_SUCCESS;
 		}
-		(void)xTracePrintF(pxErrorInfo->xWarningChannel, szDesc, xFileName, (uint32_t)uxLineNumber);
-		return TRC_SUCCESS;
-		break;
 		
 	default:
 		/* No error, or an unknown error occurred */
-		(void)xTracePrintF(pxErrorInfo->xWarningChannel, "Unknown error code: 0x%08X", uiErrorCode);
+		xTracePrintF(pxErrorInfo->xWarningChannel, "Unknown error code: 0x%08X", uiErrorCode);
 		
 		return TRC_FAIL;
-		break;
 	}
 
 	return TRC_SUCCESS;
 }
 
-/*cstat !MISRAC2004-6.3 !MISRAC2012-Dir-4.6_a Suppress basic char type usage*/
-static traceResult prvTraceErrorGetDescription(uint32_t uiErrorCode, const char** pszDesc)
+/* Returns the error or warning, as a string, or NULL if none. */
+traceResult prvTraceErrorGetDescription(uint32_t uiErrorCode, const char** pszDesc)
 {
 	/* Note: the error messages are short, in order to fit in a User Event.
 	Instead, the users can read more in the below comments.*/
@@ -191,7 +214,6 @@ static traceResult prvTraceErrorGetDescription(uint32_t uiErrorCode, const char*
 	{
 	case TRC_ERROR_NONE:
 		return TRC_FAIL;
-		break;
 
 	case TRC_WARNING_ENTRY_TABLE_SLOTS:
 		/* There was not enough symbol table slots for storing symbol names.
@@ -312,6 +334,6 @@ static traceResult prvTraceErrorGetDescription(uint32_t uiErrorCode, const char*
 	return TRC_SUCCESS;
 }
 
-#endif
+#endif /* (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING) */
 
-#endif
+#endif /* (TRC_USE_TRACEALYZER_RECORDER == 1) */

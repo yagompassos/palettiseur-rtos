@@ -112,6 +112,6 @@ extern uint32_t    SystemCoreClock;
 /* A header file that defines trace macro can be included here. */
 
 #if ( configUSE_TRACE_FACILITY == 1 )
-#include "trcRecorder.h"
+#include "../../TraceRecorder/include/trcRecorder.h"
 #endif
 #endif /* FREERTOS_CONFIG_H */

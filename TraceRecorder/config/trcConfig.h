@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -25,7 +25,6 @@ extern "C" {
  *****************************************************************************/
 //#error "Trace Recorder: Please include your processor's header file here and remove this line."
 #include "stm32f0xx.h"
-
 
 /**
  * @def TRC_CFG_HARDWARE_PORT
@@ -179,7 +178,7 @@ extern "C" {
  *
  * Default value is 1.
  */
-#define TRC_CFG_STACK_MONITOR_MAX_REPORTS 1
+#define TRC_CFG_STACK_MONITOR_MAX_REPORTS à
 
 /**
  * @def TRC_CFG_CTRL_TASK_PRIORITY
@@ -207,9 +206,6 @@ extern "C" {
  * a stream port leveraging the internal buffer (like TCP/IP). A shorter delay
  * increases the CPU load of TzCtrl somewhat, but may improve the performance of
  * of the trace streaming, especially if the trace buffer is small.
- *
- * The unit depends on the delay function used for the specific kernel port (trcKernelPort.c).
- * For example, FreeRTOS uses ticks while Zephyr uses ms.
  */
 #define TRC_CFG_CTRL_TASK_DELAY 10
 
@@ -218,7 +214,7 @@ extern "C" {
  * @brief The stack size of the Tracealyzer Control (TzCtrl) task.
  * See TRC_CFG_CTRL_TASK_PRIORITY for further information about TzCtrl.
  */
-#define TRC_CFG_CTRL_TASK_STACK_SIZE 1024
+#define TRC_CFG_CTRL_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE * 2)
 
 /**
  * @def TRC_CFG_RECORDER_BUFFER_ALLOCATION
@@ -286,8 +282,8 @@ extern "C" {
  * If this is an issue for you, set TRC_CFG_RECORDER_DATA_INIT to 0.
  * The following code can then be used before any traced objects are created:
  *
- *	extern uint32_t RecorderInitialized;
- *	RecorderInitialized = 0;
+ *	extern uint32_t RecorderEnabled;
+ *	RecorderEnabled = 0;
  *	xTraceInitialize();
  *
  * After the clocks are properly initialized, use vTraceEnable(...) to start
