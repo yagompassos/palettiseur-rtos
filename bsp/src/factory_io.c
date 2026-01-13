@@ -1,7 +1,7 @@
 /*
  * factory_io.c
  *
- *  Created on: 5 déc. 2020
+ *  Created on: 5 dï¿½c. 2020
  *      Author: Laurent
  */
 
@@ -11,6 +11,7 @@
  * Global variables
  */
 uint8_t	rx_dma_buffer[FRAME_LENGTH];
+static uint32_t actuator_state = 0;  // Track current actuators state
 
 
 /*
@@ -91,4 +92,14 @@ void FACTORY_IO_update(void)
 		USART2->TDR = buffer[n];
 	}
 }
+
+
+void FACTORY_IO_Actuators_Modify (uint8_t op, uint32_t msk) {
+	if (op) // option ON
+		actuator_state |= msk; // bits = bits or mask
+	else 	// option OFF
+		actuator_state &= ~msk; // bits = bits and not mask
+	FACTORY_IO_Actuators_Set(actuator_state);
+}
+
 

@@ -1,7 +1,7 @@
 /*
  * factory_io.h
  *
- *  Created on: 5 déc. 2020
+ *  Created on: 5 dï¿½c. 2020
  *      Author: Laurent
  */
 
@@ -98,5 +98,9 @@ uint8_t	FACTORY_IO_Sensors_Get (uint32_t msk);
  */
 void FACTORY_IO_update (void);
 
+/*
+ * This function allows us to control specific bits (on or off) without changing unwanted bits
+ */
+void FACTORY_IO_Actuators_Modify (uint8_t op, uint32_t msk);
 
 #endif /* BSP_INC_FACTORY_IO_H_ */
