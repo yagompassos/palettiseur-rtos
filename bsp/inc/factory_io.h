@@ -1,13 +1,14 @@
 /*
  * factory_io.h
  *
- *  Created on: 5 d�c. 2020
- *      Author: Laurent
+ *  Updated on: 12 jan. 2026
+ *      Author: Yago
  */
 
 #ifndef BSP_INC_FACTORY_IO_H_
 #define BSP_INC_FACTORY_IO_H_
 
+#include "stdint.h"
 
 #define	FRAME_LENGTH		14
 #define FRAME_LENGTH_ACT	7
