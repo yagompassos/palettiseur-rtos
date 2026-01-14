@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -11,8 +11,8 @@
 #ifndef TRC_KERNEL_PORT_H
 #define TRC_KERNEL_PORT_H
 
-#include <trcDefines.h>
 #include <FreeRTOS.h>	/* Defines configUSE_TRACE_FACILITY */
+#include "trcDefines.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,18 +32,14 @@ extern "C" {
 #define TRC_FREERTOS_VERSION_9_0_2				7
 #define TRC_FREERTOS_VERSION_10_0_0				8
 #define TRC_FREERTOS_VERSION_10_0_1				TRC_FREERTOS_VERSION_10_0_0
-#define TRC_FREERTOS_VERSION_10_1_0				9
-#define TRC_FREERTOS_VERSION_10_1_1				TRC_FREERTOS_VERSION_10_1_0
-#define TRC_FREERTOS_VERSION_10_2_0				TRC_FREERTOS_VERSION_10_1_0
-#define TRC_FREERTOS_VERSION_10_2_1				TRC_FREERTOS_VERSION_10_1_0
-#define TRC_FREERTOS_VERSION_10_3_0				10
+#define TRC_FREERTOS_VERSION_10_1_0				TRC_FREERTOS_VERSION_10_0_0
+#define TRC_FREERTOS_VERSION_10_1_1				TRC_FREERTOS_VERSION_10_0_0
+#define TRC_FREERTOS_VERSION_10_2_0				TRC_FREERTOS_VERSION_10_0_0
+#define TRC_FREERTOS_VERSION_10_2_1				TRC_FREERTOS_VERSION_10_0_0
+#define TRC_FREERTOS_VERSION_10_3_0				9
 #define TRC_FREERTOS_VERSION_10_3_1				TRC_FREERTOS_VERSION_10_3_0
-#define TRC_FREERTOS_VERSION_10_4_0				11
+#define TRC_FREERTOS_VERSION_10_4_0				10
 #define TRC_FREERTOS_VERSION_10_4_1				TRC_FREERTOS_VERSION_10_4_0
-#define TRC_FREERTOS_VERSION_10_4_2				TRC_FREERTOS_VERSION_10_4_0
-#define TRC_FREERTOS_VERSION_10_4_3				TRC_FREERTOS_VERSION_10_4_0
-#define TRC_FREERTOS_VERSION_10_5_0				TRC_FREERTOS_VERSION_10_4_0
-#define TRC_FREERTOS_VERSION_10_5_1				TRC_FREERTOS_VERSION_10_4_0
 
 /* Legacy FreeRTOS version codes for backwards compatibility with old trace configurations */
 #define TRC_FREERTOS_VERSION_7_3				TRC_FREERTOS_VERSION_7_3_X
@@ -62,8 +58,8 @@ extern "C" {
 #if (TRC_CFG_FREERTOS_VERSION < TRC_FREERTOS_VERSION_8_X_X)
 	/* FreeRTOS v7.x */	
 	#define STRING_CAST(x) ( (signed char*) x )
-	#define TraceKernelPortTickType_t portTickType
-	#define TraceKernelPortTaskHandle_t xTaskHandle
+	#define TickType portTickType
+	#define TaskType xTaskHandle
 #else
 	/* FreeRTOS v8.0 and later */
 	#define STRING_CAST(x) x
@@ -75,17 +71,10 @@ extern "C" {
 
 #define TRC_PLATFORM_CFG "FreeRTOS"
 #define TRC_PLATFORM_CFG_MAJOR 1
-#define TRC_PLATFORM_CFG_MINOR 2
+#define TRC_PLATFORM_CFG_MINOR 0
 #define TRC_PLATFORM_CFG_PATCH 0
 
 #if defined(TRC_CFG_ENABLE_STACK_MONITOR) && (TRC_CFG_ENABLE_STACK_MONITOR == 1) && (TRC_CFG_SCHEDULING_ONLY == 0)
-
-/**
- * @brief Specifies if the kernel allow tasks to be deleted. If the recorder knows that
- * tasks/threads cannot be deleted it can perform certain optimizations regarding stack
- * monitoring.
- */
-#define TRC_CFG_ALLOW_TASK_DELETE INCLUDE_vTaskDelete
 
 /* Required for stack monitoring */
 #undef INCLUDE_uxTaskGetStackHighWaterMark
@@ -98,24 +87,17 @@ extern "C" {
 #define INCLUDE_xTaskGetCurrentTaskHandle 1
 
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
-
-#define TRC_KERNEL_PORT_KERNEL_CAN_SWITCH_TO_SAME_TASK 0
-
-#include <trcHeap.h>
+#include "trcHeap.h"
 
 #define TRC_KERNEL_PORT_BUFFER_SIZE (sizeof(TraceHeapHandle_t) + sizeof(void*))
 #elif (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_SNAPSHOT)
 #define TRC_KERNEL_PORT_BUFFER_SIZE (sizeof(TraceUnsignedBaseType_t))
 #endif
 
-#if (TRC_CFG_FREERTOS_VERSION == FREERTOS_VERSION_NOT_SET)
-#error "Please set TRC_CFG_FREERTOS_VERSION in trcKernelPortConfig.h to the FreeRTOS version used."
-#endif
-
 /**
  * @internal The kernel port data buffer
  */
-typedef struct TraceKernelPortDataBuffer	/* Aligned */
+typedef struct TraceKernelPortDataBuffer
 {
 	uint8_t buffer[TRC_KERNEL_PORT_BUFFER_SIZE];
 } TraceKernelPortDataBuffer_t;
@@ -159,17 +141,17 @@ unsigned char xTraceKernelPortIsSchedulerSuspended(void);
 /**
  * @brief Kernel specific way to properly allocate critical sections
  */
-#define TRC_KERNEL_PORT_ALLOC_CRITICAL_SECTION() TraceUnsignedBaseType_t TRACE_ALLOC_CRITICAL_SECTION_NAME;
+#define TRC_KERNEL_PORT_ALLOC_CRITICAL_SECTION() 
 
 /**
  * @brief Kernel specific way to properly allocate critical sections
  */
-#define TRC_KERNEL_PORT_ENTER_CRITICAL_SECTION() TRACE_ALLOC_CRITICAL_SECTION_NAME = 0; portENTER_CRITICAL()
+#define TRC_KERNEL_PORT_ENTER_CRITICAL_SECTION() portENTER_CRITICAL()
 
 /**
  * @brief Kernel specific way to properly allocate critical sections
  */
-#define TRC_KERNEL_PORT_EXIT_CRITICAL_SECTION() (void)TRACE_ALLOC_CRITICAL_SECTION_NAME; portEXIT_CRITICAL()
+#define TRC_KERNEL_PORT_EXIT_CRITICAL_SECTION() portEXIT_CRITICAL()
 
 /**
 * @brief Kernel specific way to set interrupt mask
@@ -345,17 +327,10 @@ traceResult xTraceKernelPortGetUnusedStack(void* pvTask, TraceUnsignedBaseType_t
  */
 #define TRACE_CPU_CLOCK_HZ configCPU_CLOCK_HZ /* Defined in "FreeRTOSConfig.h" */
 
-#if (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_DYNAMIC)
 /**
- * @internal Kernel port specific heap initialization
+ * @internal Kernel specific malloc definition
  */
-#define TRC_KERNEL_PORT_HEAP_INIT(size)
-
-/**
- * @internal Kernel port specific heap malloc definition
- */
-#define TRC_KERNEL_PORT_HEAP_MALLOC(size) pvPortMalloc(size)
-#endif /* (TRC_CFG_RECORDER_BUFFER_ALLOCATION == TRC_RECORDER_BUFFER_ALLOCATION_DYNAMIC) */
+#define TRACE_MALLOC(size) pvPortMalloc(size) 	
 
 #if (defined(configUSE_TIMERS) && (configUSE_TIMERS == 1))
 
@@ -373,14 +348,6 @@ traceResult xTraceKernelPortGetUnusedStack(void* pvTask, TraceUnsignedBaseType_t
 #define TRC_CFG_GET_CURRENT_CORE() rtos_core_id_get()
 
 #endif
-
-#ifdef _CMSIS_RP2040_H_
-#undef TRC_CFG_CORE_COUNT
-#define TRC_CFG_CORE_COUNT configNUM_CORES 
-
-#undef TRC_CFG_GET_CURRENT_CORE
-#define TRC_CFG_GET_CURRENT_CORE() get_core_num()
-#endif 
 
 #if (TRC_CFG_FREERTOS_VERSION == TRC_FREERTOS_VERSION_9_0_1)
 
@@ -2061,11 +2028,7 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 #define PSF_EVENT_TIMER_PENDFUNCCALL_FAILED					0x82
 #define PSF_EVENT_TIMER_PENDFUNCCALL_FROMISR_FAILED			0x83
 
-/* We reserve 0x08 slots for this */
 #define PSF_EVENT_USER_EVENT								0x90
-
-/* We reserve 0x08 slots for this */
-#define PSF_EVENT_USER_EVENT_FIXED							0x98
 
 #define PSF_EVENT_TIMER_START								0xA0
 #define PSF_EVENT_TIMER_RESET								0xA1
@@ -2146,8 +2109,8 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 #define PSF_EVENT_STATEMACHINE_CREATE						0xED
 #define PSF_EVENT_STATEMACHINE_STATECHANGE					0xEE
 
-#define PSF_EVENT_INTERVAL_CHANNEL_CREATE					0xEF
-#define PSF_EVENT_INTERVAL_START							0xF0
+#define PSF_EVENT_INTERVAL_CREATE							0xEF
+#define PSF_EVENT_INTERVAL_STATECHANGE						0xF0
 
 #define PSF_EVENT_EXTENSION_CREATE							0xF1
 
@@ -2159,16 +2122,7 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 
 #define PSF_EVENT_MUTEX_TAKE_RECURSIVE_BLOCK				0xF6
 
-#define PSF_EVENT_INTERVAL_STOP								0xF7
-#define PSF_EVENT_INTERVAL_CHANNEL_SET_CREATE				0xF8
-
-#define PSF_EVENT_RUNNABLE_REGISTER							0xF9
-#define PSF_EVENT_RUNNABLE_START							0xFA
-#define PSF_EVENT_RUNNABLE_STOP								0xFB
-
-#define PSF_EVENT_DEPENDENCY_REGISTER						0xFC
-
-#define TRC_EVENT_LAST_ID									(PSF_EVENT_DEPENDENCY_REGISTER)
+#define TRC_EVENT_LAST_ID									PSF_EVENT_COUNTER_LIMIT_EXCEEDED
 
 /*** The trace macros for streaming ******************************************/
 
@@ -2179,7 +2133,7 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 
 #if (TRC_CFG_INCLUDE_OSTICK_EVENTS == 1)
 
-#define OS_TICK_EVENT(uxSchedulerSuspended, xTickCount) if ((uxSchedulerSuspended) == (unsigned portBASE_TYPE) pdFALSE) { prvTraceStoreEvent_Param(PSF_EVENT_NEW_TIME, xTickCount); }
+#define OS_TICK_EVENT(uxSchedulerSuspended, xTickCount) if ((uxSchedulerSuspended) == (unsigned portBASE_TYPE) pdFALSE) { prvTraceStoreEvent_Param(PSF_EVENT_NEW_TIME, (uint32_t)(xTickCount)); }
 
 #else
 
@@ -2198,14 +2152,14 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 #elif TRC_CFG_FREERTOS_VERSION >= TRC_FREERTOS_VERSION_7_5_X
 
 #define traceTASK_INCREMENT_TICK( xTickCount ) \
-	if (uxSchedulerSuspended == ( unsigned portBASE_TYPE ) pdTRUE || uxPendedTicks == 0) { xTraceTimestampSetOsTickCount((xTickCount) + 1); } \
-	OS_TICK_EVENT(uxSchedulerSuspended, (xTickCount) + 1)
+	if (uxSchedulerSuspended == ( unsigned portBASE_TYPE ) pdTRUE || uxPendedTicks == 0) { xTraceTimestampSetOsTickCount(xTickCount + 1); } \
+	OS_TICK_EVENT(uxSchedulerSuspended, xTickCount + 1)
 
 #else
 
 #define traceTASK_INCREMENT_TICK( xTickCount ) \
-	if (uxSchedulerSuspended == ( unsigned portBASE_TYPE ) pdTRUE || uxMissedTicks == 0) { xTraceTimestampSetOsTickCount((xTickCount) + 1); } \
-	OS_TICK_EVENT(uxSchedulerSuspended, (xTickCount) + 1)
+	if (uxSchedulerSuspended == ( unsigned portBASE_TYPE ) pdTRUE || uxMissedTicks == 0) { xTraceTimestampSetOsTickCount(xTickCount + 1); } \
+	OS_TICK_EVENT(uxSchedulerSuspended, xTickCount + 1)
 
 #endif
 
@@ -2217,7 +2171,7 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 /* Called for each task that becomes ready */
 #undef traceMOVED_TASK_TO_READY_STATE
 #define traceMOVED_TASK_TO_READY_STATE( pxTCB ) \
-	xTraceTaskReady(pxTCB);
+	xTraceTaskReady(pxTCB)
 
 #undef traceTASK_CREATE
 #if TRC_CFG_FREERTOS_VERSION >= TRC_FREERTOS_VERSION_9_0_0
@@ -2786,7 +2740,7 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 
 #undef traceTIMER_EXPIRED
 #define traceTIMER_EXPIRED(tmr) \
-	prvTraceStoreEvent_HandleParam(PSF_EVENT_TIMER_EXPIRED, (void*)(tmr), (TraceUnsignedBaseType_t)((tmr)->pxCallbackFunction))
+	prvTraceStoreEvent_HandleParam(PSF_EVENT_TIMER_EXPIRED, (void*)(tmr), (uint32_t)((tmr)->pxCallbackFunction))
 
 #endif
 
@@ -2795,17 +2749,16 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 
 #undef tracePEND_FUNC_CALL
 #define tracePEND_FUNC_CALL(func, arg1, arg2, ret) \
-	prvTraceStoreEvent_Param(((ret) == pdPASS) ? PSF_EVENT_TIMER_PENDFUNCCALL : PSF_EVENT_TIMER_PENDFUNCCALL_FAILED, (TraceUnsignedBaseType_t)(func))
+	prvTraceStoreEvent_Param(((ret) == pdPASS) ? PSF_EVENT_TIMER_PENDFUNCCALL : PSF_EVENT_TIMER_PENDFUNCCALL_FAILED, (uint32_t)(func))
 
 #undef tracePEND_FUNC_CALL_FROM_ISR
 #define tracePEND_FUNC_CALL_FROM_ISR(func, arg1, arg2, ret) \
-	prvTraceStoreEvent_Param(((ret) == pdPASS) ? PSF_EVENT_TIMER_PENDFUNCCALL_FROMISR : PSF_EVENT_TIMER_PENDFUNCCALL_FROMISR_FAILED, (TraceUnsignedBaseType_t)(func))
+	prvTraceStoreEvent_Param(((ret) == pdPASS) ? PSF_EVENT_TIMER_PENDFUNCCALL_FROMISR : PSF_EVENT_TIMER_PENDFUNCCALL_FROMISR_FAILED, (uint32_t)(func))
 
 #endif
 
 #if (TRC_CFG_INCLUDE_EVENT_GROUP_EVENTS == 1)
 
-#if (TRC_CFG_FREERTOS_VERSION >= TRC_FREERTOS_VERSION_10_1_0)
 #undef traceEVENT_GROUP_CREATE
 #define traceEVENT_GROUP_CREATE(eg)  \
 	xTraceObjectRegisterWithoutHandle(PSF_EVENT_EVENTGROUP_CREATE, (void*)(eg), 0, (uint32_t)(eg)->uxEventBits)
@@ -2813,15 +2766,6 @@ TraceHeapHandle_t xTraceKernelPortGetSystemHeapHandle(void);
 #undef traceEVENT_GROUP_DELETE
 #define traceEVENT_GROUP_DELETE(eg) \
 	xTraceObjectUnregisterWithoutHandle(PSF_EVENT_EVENTGROUP_DELETE, (void*)(eg), (uint32_t)(eg)->uxEventBits)
-#else
-#undef traceEVENT_GROUP_CREATE
-#define traceEVENT_GROUP_CREATE(eg)  \
-	xTraceObjectRegisterWithoutHandle(PSF_EVENT_EVENTGROUP_CREATE, (void*)(eg), 0, ((EventGroup_t *)(eg))->uxEventBits)
-
-#undef traceEVENT_GROUP_DELETE
-#define traceEVENT_GROUP_DELETE(eg) \
-	xTraceObjectUnregisterWithoutHandle(PSF_EVENT_EVENTGROUP_DELETE, (void*)(eg), ((EventGroup_t *)(eg))->uxEventBits)
-#endif
 
 #undef traceEVENT_GROUP_CREATE_FAILED
 #define traceEVENT_GROUP_CREATE_FAILED() \

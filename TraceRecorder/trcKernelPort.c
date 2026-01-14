@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -9,6 +9,7 @@
  */
 
 #include <FreeRTOS.h>
+
 #include <trcRecorder.h>
 
 #if (!defined(TRC_USE_TRACEALYZER_RECORDER) && configUSE_TRACE_FACILITY == 1)
@@ -164,7 +165,7 @@ typedef struct TraceKernelPortData
 	TraceKernelPortTaskHandle_t xTzCtrlHandle;
 } TraceKernelPortData_t;
 
-static TraceKernelPortData_t* pxKernelPortData TRC_CFG_RECORDER_DATA_ATTRIBUTE;
+static TraceKernelPortData_t* pxKernelPortData;
 
 #define TRC_PORT_MALLOC(size) pvPortMalloc(size)
 
@@ -187,28 +188,21 @@ traceResult xTraceKernelPortInitialize(TraceKernelPortDataBuffer_t* pxBuffer)
 
 traceResult xTraceKernelPortEnable(void)
 {
-#ifdef configIDLE_TASK_NAME
-	TraceEntryHandle_t xIdleHandle;
-	uint32_t i;
-
-	for (i = 0; ((configIDLE_TASK_NAME)[i] != 0) && (i < 128); i++) {}
-
-	if (xTraceEntryCreate(&xIdleHandle) == TRC_SUCCESS)
-	{
-		xTraceEntrySetSymbol(xIdleHandle, configIDLE_TASK_NAME, i);
-		xTraceEntrySetOptions(xIdleHandle, TRC_ENTRY_OPTION_IDLE_NAME);
-	}
-#endif
+#if (TRC_CFG_INCLUDE_MEMMANG_EVENTS == 1)
+	HeapStats_t xHeapStats;
+	void* pvAlloc;
 	
-#if (configSUPPORT_DYNAMIC_ALLOCATION == 1)
 	if (pxKernelPortData->xSystemHeapHandle == 0)
 	{
-#if defined(configTOTAL_HEAP_SIZE)
-		xTraceHeapCreate("System Heap", 0, 0, configTOTAL_HEAP_SIZE, &pxKernelPortData->xSystemHeapHandle);
-#else
-		/* A heap type is used that doesn't define configTOTAL_HEAP_SIZE so heap size needs to be configured manually. Define TRC_CFG_TOTAL_HEAP_SIZE in trcConfig.h. */
-		xTraceHeapCreate("System Heap", 0, 0, (TRC_CFG_TOTAL_HEAP_SIZE), &pxKernelPortData->xSystemHeapHandle);
-#endif
+		/* Some magic to make sure the heap has been initialized! */
+		pvAlloc = pvPortMalloc(1);
+		if (pvAlloc != 0)
+		{
+			vPortFree(pvAlloc);
+		}
+
+		vPortGetHeapStats(&xHeapStats);
+		xTraceHeapCreate("System Heap", configTOTAL_HEAP_SIZE - xHeapStats.xAvailableHeapSpaceInBytes, configTOTAL_HEAP_SIZE - xHeapStats.xMinimumEverFreeBytesRemaining, configTOTAL_HEAP_SIZE, &pxKernelPortData->xSystemHeapHandle);
 	}
 #endif
 	
@@ -494,7 +488,7 @@ void vTraceSetMessageBufferName(void* pvStreamBuffer, const char* szName)
 
 #endif
 
-void* prvTraceGetCurrentTaskHandle(void)
+void* prvTraceGetCurrentTaskHandle()
 {
 	return xTaskGetCurrentTaskHandle();
 }
@@ -551,7 +545,7 @@ static portTASK_FUNCTION(TzCtrl, pvParameters)
 
 #endif
 
-traceResult xTraceKernelPortInitObjectPropertyTable(void)
+traceResult xTraceKernelPortInitObjectPropertyTable()
 {
 	RecorderDataPtr->ObjectPropertyTable.NumberOfObjectClasses = TRACE_NCLASSES;
 	RecorderDataPtr->ObjectPropertyTable.NumberOfObjectsPerClass[0] = TRC_CFG_NQUEUE;
@@ -595,7 +589,7 @@ traceResult xTraceKernelPortInitObjectPropertyTable(void)
 	return TRC_SUCCESS;
 }
 
-traceResult xTraceKernelPortInitObjectHandleStack(void)
+traceResult xTraceKernelPortInitObjectHandleStack()
 {
 	uint32_t i = 0;
 

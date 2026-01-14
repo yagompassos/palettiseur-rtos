@@ -19,6 +19,7 @@ static uint8_t 	SystemClock_Config	(void);
 void vTaskLed(void *pvParameters);
 void vTaskControl(void *pvParameters);
 void vTaskSensorMonitor(void *pvParameters);
+void vTaskDistribuition(void *pvParameters);
 
 // FreeRTOS entities
 xTaskHandle			vTaskControl_handle;
@@ -38,13 +39,28 @@ int main(void)
 	my_printf("\r\nConsole Ready!\r\n");
 	my_printf("SYSCLK = %d Hz\r\n", SystemCoreClock);
 
+	/*
+	 *  righ now tracealyzer doesn't show much info... so its better to leave it like this
+	 *  This means TraceFacility its also deactivated in FreeRTOSConfig.h
+	 *  The program doesnt run if trace is activated but you havent opened Percepio Tracealyzer (so we better leave all commented right now)
+	 */
+//	xTraceEnable(TRC_START);    // <====== We uncomment that when we want to see the results in tracealyzer
+
 	// Read all states from the scene
 	FACTORY_IO_update();
+
+	/*
+	 * ACTIVATES SOME ACTUATORS
+	 * This activates the first 2 tapis of the factory scene.
+	 * !!!! see the defines of main.h and also the comments in factory_io.h !!!!
+	 */
+	FACTORY_IO_Actuators_Set(4102); // right now this is a gambiarra (soma de varios binarios para ativar os actuators certos. tem que aprender a fazer do jeito certo.
 
 	// Creating FreeRTOS tasks
 	xTaskCreate(vTaskSensorMonitor, "Task_Sensor_Monitor", 256, NULL, 3, NULL);
 	xTaskCreate(vTaskLed, "Task_LED", 128, NULL, 1, NULL);
 	xTaskCreate(vTaskControl, "Task_Control", 128, NULL, 2, &vTaskControl_handle);
+	xTaskCreate(vTaskDistribuition, "Task_Distribuition", 256, NULL, 2, NULL);
 
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");
@@ -57,17 +73,24 @@ int main(void)
 	}
 }
 
-// Task Sensor Monitor receives value of sensor and notifies tasks.
+// Task Sensor Monitor receives value of all scene sensors and notifies tasks.
 void vTaskSensorMonitor (void *pvParameters){
     static uint8_t last_sensor_state = 1;
     uint8_t current_sensor_state;
+    // Resource:
+    uint8_t space = 2;
 
     while(1){
-    	// DEVE SE LER O FACTORY_IO_update(); TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
-        current_sensor_state = FACTORY_IO_Sensors_Get(0x00000002);
+    	// DEVE SE LER O factoryIO COM update TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
+//    	FACTORY_IO_update();
+        current_sensor_state = FACTORY_IO_Sensors_Get(4);
 
         if (current_sensor_state == 0 && last_sensor_state == 1) {
-            xTaskNotifyGive(vTaskControl_handle);
+        	space--;
+        	if (space==0) {
+        		xTaskNotifyGive(vTaskControl_handle);
+        		space = 2;
+        	}
         }
 
         last_sensor_state = current_sensor_state;
@@ -77,7 +100,25 @@ void vTaskSensorMonitor (void *pvParameters){
 }
 
 /*
+ * Click at the blue button at your board, this generates new packages (cartons) to the scene.
+ */
+void vTaskDistribuition (void *pvParameters) {
+	my_printf("Distribuition Ready!\r\n");
+
+	while (1) {
+		if (BSP_PB_GetState() == 1) {
+
+			my_printf("We pop a cartao!\r\n");
+			FACTORY_IO_Actuators_Set(4103);
+			vTaskDelay(3000); // time to make 2 packages spawn
+			FACTORY_IO_Actuators_Set(4102);
+		}
+		vTaskDelay(50);
+	}
+}
+/*
  *	TaskLed toggles LED every 300ms
+ *	we can remove that, bernardao
  */
 void vTaskLed (void *pvParameters)
 {
@@ -90,29 +131,19 @@ void vTaskLed (void *pvParameters)
 }
 
 /*
- *	TaskControl controls conveyor activation
+ *	TaskControl controls "2. BLOCAGE ENTREE PALETTISEUR"
+ *	It's the barrier that let the packages in to one spot before the elevator
+ *
  */
 void vTaskControl (void *pvParameters) {
-	my_printf("Waiting for button...\n\r");
-
 	while (1) {
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-		if (BSP_PB_GetState() == 1) {
-			// Start conveyor A[0] = 1
-			my_printf("Starting Conveyor\r\n");
-			FACTORY_IO_Actuators_Set(0x00000001);
-
-			//Awaits the notification from Task Sensor Monitor
-			my_printf("Waiting for sensor...\r\n");
-			ulTaskNotifyTake(pdTRUE, 0);
-			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-			// Reaching this point means that a notification has been received
-			// Stop conveyor A[0] = 0
-			my_printf("Stop!\r\n");
-			FACTORY_IO_Actuators_Set(0x00000000);
-		}
-		vTaskDelay(50);
+		FACTORY_IO_Actuators_Set(4098);
+		vTaskDelay(1500); // time to let two packages pass.
+		FACTORY_IO_Actuators_Set(4102);
 	}
+		vTaskDelay(50);
 }
 
 /*

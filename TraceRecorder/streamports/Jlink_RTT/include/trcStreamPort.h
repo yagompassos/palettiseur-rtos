@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -25,7 +25,6 @@
 extern "C" {
 #endif
 
-#include <trcDefines.h>
 #include <trcTypes.h>
 #include <trcStreamPortConfig.h>
 
@@ -33,16 +32,6 @@ extern "C" {
 #include <SEGGER_RTT.h>
 
 #define TRC_USE_INTERNAL_BUFFER (TRC_CFG_STREAM_PORT_USE_INTERNAL_BUFFER)
-
-#define TRC_INTERNAL_EVENT_BUFFER_WRITE_MODE (TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_WRITE_MODE)
-
-#define TRC_INTERNAL_EVENT_BUFFER_TRANSFER_MODE (TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_TRANSFER_MODE)
-
-#define TRC_INTERNAL_BUFFER_CHUNK_SIZE (TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_CHUNK_SIZE)
-
-#define TRC_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_SIZE_LIMIT (TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_SIZE_LIMIT)
-
-#define TRC_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_COUNT_LIMIT (TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_CHUNK_TRANSFER_AGAIN_COUNT_LIMIT)
 
 /* Aligned */
 #define TRC_STREAM_PORT_INTERNAL_BUFFER_SIZE ((((TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_SIZE) + sizeof(TraceUnsignedBaseType_t) - 1) / sizeof(TraceUnsignedBaseType_t)) * sizeof(TraceUnsignedBaseType_t))
@@ -57,7 +46,7 @@ extern "C" {
 /**
  * @brief A structure representing the trace stream port buffer.
  */
-typedef struct TraceStreamPortBuffer	/* Aligned */
+typedef struct TraceStreamPortBuffer
 {
 #if (TRC_USE_INTERNAL_BUFFER == 1)
 	uint8_t bufferInternal[TRC_STREAM_PORT_INTERNAL_BUFFER_SIZE];
@@ -87,15 +76,7 @@ traceResult xTraceStreamPortInitialize(TraceStreamPortBuffer_t* pxBuffer);
  * @retval TRC_FAIL Allocate failed
  * @retval TRC_SUCCESS Success
  */
-#if (TRC_USE_INTERNAL_BUFFER == 1)
-	#if (TRC_INTERNAL_EVENT_BUFFER_WRITE_MODE == TRC_INTERNAL_EVENT_BUFFER_OPTION_WRITE_MODE_COPY)
-		#define xTraceStreamPortAllocate(uiSize, ppvData) ((void)(uiSize), xTraceStaticBufferGet(ppvData))
-	#else
-		#define xTraceStreamPortAllocate(uiSize, ppvData) ((void)(uiSize), xTraceInternalEventBufferAlloc(uiSize, ppvData))
-	#endif
-#else
-	#define xTraceStreamPortAllocate(uiSize, ppvData) ((void)(uiSize), xTraceStaticBufferGet(ppvData))
-#endif
+#define xTraceStreamPortAllocate(uiSize, ppvData) ((void)(uiSize), xTraceStaticBufferGet(ppvData))
 
 /**
  * @brief Commits data to the stream port, depending on the implementation/configuration of the
@@ -110,13 +91,9 @@ traceResult xTraceStreamPortInitialize(TraceStreamPortBuffer_t* pxBuffer);
  * @retval TRC_SUCCESS Success
  */
 #if (TRC_USE_INTERNAL_BUFFER == 1)
-	#if (TRC_INTERNAL_EVENT_BUFFER_WRITE_MODE == TRC_INTERNAL_EVENT_BUFFER_OPTION_WRITE_MODE_COPY)
-		#define xTraceStreamPortCommit xTraceInternalEventBufferPush
-	#else
-		#define xTraceStreamPortCommit xTraceInternalEventBufferAllocCommit
-	#endif
+#define xTraceStreamPortCommit xTraceInternalEventBufferPush
 #else
-	#define xTraceStreamPortCommit xTraceStreamPortWriteData
+#define xTraceStreamPortCommit xTraceStreamPortWriteData
 #endif
 
 /**

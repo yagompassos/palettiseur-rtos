@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -36,15 +36,15 @@ extern "C" {
  * check the actual usage by selecting View menu -> Trace Details ->
  * Resource Usage -> Object Table.
  */
-#define TRC_CFG_NTASK           6
-#define TRC_CFG_NISR            4
-#define TRC_CFG_NQUEUE          2
-#define TRC_CFG_NSEMAPHORE      6
-#define TRC_CFG_NMUTEX          2
-#define TRC_CFG_NTIMER          1
-#define TRC_CFG_NEVENTGROUP     2
-#define TRC_CFG_NSTREAMBUFFER   2
-#define TRC_CFG_NMESSAGEBUFFER  2
+#define TRC_CFG_NTASK			15
+#define TRC_CFG_NISR			5
+#define TRC_CFG_NQUEUE			10
+#define TRC_CFG_NSEMAPHORE		10
+#define TRC_CFG_NMUTEX			10
+#define TRC_CFG_NTIMER			5
+#define TRC_CFG_NEVENTGROUP		5
+#define TRC_CFG_NSTREAMBUFFER	5
+#define TRC_CFG_NMESSAGEBUFFER	5
 
 /**
  * @def TRC_CFG_NAME_LEN_TASK, TRC_CFG_NAME_LEN_QUEUE, ...

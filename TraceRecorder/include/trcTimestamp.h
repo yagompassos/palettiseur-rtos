@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -19,7 +19,7 @@
 
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
 
-#include <trcTypes.h>
+#include "trcTypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,18 +34,28 @@ extern "C" {
 /**
  * @brief Trace Timestamp Structure
  */
-typedef struct TraceTimestampData	/* Aligned */
+typedef struct TraceTimestamp
 {
 	uint32_t type;						/**< Timer type (direction) */
-	uint32_t period;					/**< Timer Period */
 	TraceUnsignedBaseType_t frequency;	/**< Timer Frequency */
+	uint32_t period;					/**< Timer Period */
 	uint32_t wraparounds;				/**< Nr of timer wraparounds */
 	uint32_t osTickHz;					/**< RTOS tick frequency */
 	uint32_t latestTimestamp;			/**< Latest timestamp */
 	uint32_t osTickCount;				/**< RTOS tick count */
-} TraceTimestampData_t;
+} TraceTimestamp_t;
 
-extern TraceTimestampData_t* pxTraceTimestamp;
+extern TraceTimestamp_t* pxTraceTimestamp;
+
+#define TRC_TIMESTAMP_RECORD_SIZE (sizeof(TraceTimestamp_t))
+
+/**
+ * @internal Trace Timestamp Buffer Structure
+ */
+typedef struct TraceTimestampBuffer
+{
+	uint32_t buffer[(TRC_TIMESTAMP_RECORD_SIZE) / sizeof(uint32_t)];
+} TraceTimestampBuffer_t;
 
 /**
  * @internal Initialize trace timestamp system.
@@ -56,7 +66,7 @@ extern TraceTimestampData_t* pxTraceTimestamp;
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceTimestampInitialize(TraceTimestampData_t *pxBuffer);
+traceResult xTraceTimestampInitialize(TraceTimestampBuffer_t *pxBuffer);
 
 #if ((TRC_CFG_USE_TRACE_ASSERT) == 1)
 

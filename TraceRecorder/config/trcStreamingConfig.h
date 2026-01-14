@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -16,6 +16,14 @@
 extern "C" {
 #endif
 
+#define TRC_CFG_STREAM_PORT TRC_STREAM_PORT_JLINK_RTT
+//#define TRC_CFG_SYMBOL_TABLE_SLOTS             40
+//#define TRC_CFG_SYMBOL_MAX_LENGTH              25
+//#define TRC_CFG_OBJECT_DATA_SLOTS              40
+//#define TRC_CFG_PAGED_EVENT_BUFFER_PAGE_COUNT  10
+//#define TRC_CFG_PAGED_EVENT_BUFFER_PAGE_SIZE   500
+//#define TRC_CFG_ISR_TAILCHAINING_THRESHOLD     0
+
 /**
  * @def TRC_CFG_ENTRY_SLOTS
  * @brief The maximum number of objects and symbols that can be stored. This includes:
@@ -28,7 +36,7 @@ extern "C" {
  * trace display will be affected. In that case, there will be warnings
  * (as User Events) from TzCtrl task, that monitors this.
  */
-#define TRC_CFG_ENTRY_SLOTS 18
+#define TRC_CFG_ENTRY_SLOTS 50
 
 /**
  * @def TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH
@@ -42,7 +50,7 @@ extern "C" {
  * which will affect the trace display. In that case, there will be warnings
  * (as User Events) from TzCtrl task, that monitors this.
  */
-#define TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH 21
+#define TRC_CFG_ENTRY_SYMBOL_MAX_LENGTH 32
 
 #ifdef __cplusplus
 }

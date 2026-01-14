@@ -1,6 +1,6 @@
 /*
- * Trace Recorder for Tracealyzer v4.8.1
- * Copyright 2023 Percepio AB
+ * Trace Recorder for Tracealyzer v4.6.0
+ * Copyright 2021 Percepio AB
  * www.percepio.com
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -79,7 +79,7 @@ extern "C" {
  *
  * Default value is 800.
  */
-#define TRC_CFG_SYMBOL_TABLE_SIZE 200
+#define TRC_CFG_SYMBOL_TABLE_SIZE 800
 
 #if (TRC_CFG_SYMBOL_TABLE_SIZE == 0)
 #error "TRC_CFG_SYMBOL_TABLE_SIZE may not be zero!"

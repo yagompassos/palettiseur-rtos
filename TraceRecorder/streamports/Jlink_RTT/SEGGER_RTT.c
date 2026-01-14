@@ -73,7 +73,7 @@ Additional information:
 ----------------------------------------------------------------------
 */
 
-#include "SEGGER_RTT.h"
+#include "../../../TraceRecorder/streamports/Jlink_RTT/include/SEGGER_RTT.h"
 
 #include <string.h>                 // for memcpy
 

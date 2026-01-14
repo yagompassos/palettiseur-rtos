@@ -1,6 +1,6 @@
 /*
-* Percepio Trace Recorder for Tracealyzer v4.8.1
-* Copyright 2023 Percepio AB
+* Percepio Trace Recorder for Tracealyzer v4.6.0
+* Copyright 2021 Percepio AB
 * www.percepio.com
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -19,7 +19,7 @@
 
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_STREAMING)
 
-#include <trcTypes.h>
+#include "trcTypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,12 +31,12 @@ extern "C" {
  * @{
  */
 
-typedef struct TraceErrorData	/* Aligned */
+#define TRC_ERROR_BUFFER_SIZE (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(TraceStringHandle_t))
+
+typedef struct TraceErrorBuffer
 {
-	uint32_t uiErrorAndWarningFlags;
-	uint32_t uiErrorCode;
-	TraceStringHandle_t xWarningChannel;
-} TraceErrorData_t;
+	uint32_t buffer[(TRC_ERROR_BUFFER_SIZE) / sizeof(uint32_t)];
+} TraceErrorBuffer_t;
 
 /**
  * @internal Initializes the error system
@@ -46,7 +46,7 @@ typedef struct TraceErrorData	/* Aligned */
  * @retval TRC_FAIL Failure
  * @retval TRC_SUCCESS Success
  */
-traceResult xTraceErrorInitialize(TraceErrorData_t* pxBuffer);
+traceResult xTraceErrorInitialize(TraceErrorBuffer_t* pxBuffer);
 
 /**
  * @brief Register a warning
