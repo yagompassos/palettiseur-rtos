@@ -395,4 +395,4 @@ class EngineIO_Controller():
 
 
 if __name__ == "__main__":
-    EngineIO_Controller(port='COM6', baudrate=115200, timeout=.5, rate=0.016,  verbose=True)
+    EngineIO_Controller(port='COM6', baudrate=115200, timeout=.5, rate=0.016,  verbose=False)

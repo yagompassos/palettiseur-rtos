@@ -5,25 +5,17 @@
  *      Author: Yago
  */
 
-#include "stm32f0xx.h"
 #include "main.h"
-#include "bsp.h"
-#include "factory_io.h"
-#include "delay.h"
-#include "FreeRTOSConfig.h"
 
 //Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
 
 // FreeRTOS tasks
-void vTaskLed(void *pvParameters);
-void vTaskControl(void *pvParameters);
 void vTaskSensorMonitor(void *pvParameters);
-void vTaskDistribuition(void *pvParameters);
+void vTaskSTOP(void *pvParameters);
 
-// FreeRTOS entities
-xTaskHandle			vTaskControl_handle;
-
+// Kernel Objects
+EventGroupHandle_t sensorsEventGroup = NULL;
 
 int main(void)
 {
@@ -40,28 +32,29 @@ int main(void)
 	my_printf("SYSCLK = %d Hz\r\n", SystemCoreClock);
 
 	/*
-	 *  righ now tracealyzer doesn't show much info... so its better to leave it like this
+	 *  right now tracealyzer doesn't show much info... so its better to leave it like this
 	 *  This means TraceFacility its also deactivated in FreeRTOSConfig.h
 	 *  The program doesnt run if trace is activated but you havent opened Percepio Tracealyzer (so we better leave all commented right now)
 	 */
-//	xTraceEnable(TRC_START);    // <====== We uncomment that when we want to see the results in tracealyzer
+	//	xTraceEnable(TRC_START);    // <====== We uncomment that when we want to see the results in tracealyzer
 
 	// Read all states from the scene
 	FACTORY_IO_update();
 
-	/*
-	 * ACTIVATES SOME ACTUATORS
-	 * This activates the first 2 tapis of the factory scene.
-	 * !!!! see the defines of main.h and also the comments in factory_io.h !!!!
-	 */
-	FACTORY_IO_Actuators_Set(4102); // right now this is a gambiarra (soma de varios binarios para ativar os actuators certos. tem que aprender a fazer do jeito certo.
+	// Create Event Group
+	sensorsEventGroup = xEventGroupCreate();
+
+	// Register Trace events
+	// ue1 = xTraceRegisterString("state");
 
 	// Creating FreeRTOS tasks
 	xTaskCreate(vTaskSensorMonitor, "Task_Sensor_Monitor", 256, NULL, 3, NULL);
-	xTaskCreate(vTaskLed, "Task_LED", 128, NULL, 1, NULL);
-	xTaskCreate(vTaskControl, "Task_Control", 128, NULL, 2, &vTaskControl_handle);
-	xTaskCreate(vTaskDistribuition, "Task_Distribuition", 256, NULL, 2, NULL);
+	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
+	xTaskCreate(vTaskDistribuitionCardBoards, "Task_DistribuitionCardBoards", 256, NULL, 2, NULL);
 
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");
 	vTaskStartScheduler();
@@ -82,16 +75,27 @@ void vTaskSensorMonitor (void *pvParameters){
 
     while(1){
     	// DEVE SE LER O factoryIO COM update TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
-//    	FACTORY_IO_update();
-        current_sensor_state = FACTORY_IO_Sensors_Get(4);
+    	FACTORY_IO_update();
 
-        if (current_sensor_state == 0 && last_sensor_state == 1) {
-        	space--;
-        	if (space==0) {
-        		xTaskNotifyGive(vTaskControl_handle);
-        		space = 2;
-        	}
-        }
+        current_sensor_state = FACTORY_IO_Sensors_Get(SEN_ENTREE_PALETTISEUR);
+        if (current_sensor_state == 0) {
+			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR);
+			if (last_sensor_state == 1)
+				space--; {
+				if (space==0) {
+					xEventGroupSetBits(sensorsEventGroup, EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR);
+					space = 2;
+				}
+			}
+        } else
+			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR | EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR);
+
+
+        if (FACTORY_IO_Sensors_Get(SEN_CARTON_DISTRIBUE))
+			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE);
+        else
+			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE);
+
 
         last_sensor_state = current_sensor_state;
 
@@ -100,51 +104,19 @@ void vTaskSensorMonitor (void *pvParameters){
 }
 
 /*
- * Click at the blue button at your board, this generates new packages (cartons) to the scene.
+ * stop everything in scene
  */
-void vTaskDistribuition (void *pvParameters) {
-	my_printf("Distribuition Ready!\r\n");
-
+void vTaskSTOP (void *pvParameters) {
 	while (1) {
 		if (BSP_PB_GetState() == 1) {
 
-			my_printf("We pop a cartao!\r\n");
-			FACTORY_IO_Actuators_Set(4103);
-			vTaskDelay(3000); // time to make 2 packages spawn
-			FACTORY_IO_Actuators_Set(4102);
+			my_printf("stopping\r\n");
+			FACTORY_IO_Actuators_Set(0);
 		}
 		vTaskDelay(50);
 	}
 }
-/*
- *	TaskLed toggles LED every 300ms
- *	we can remove that, bernardao
- */
-void vTaskLed (void *pvParameters)
-{
-	my_printf("task1: vou rodar!\n\r");
-	while(1)
-	{
-		BSP_LED_Toggle();
-		vTaskDelay(100);
-	}
-}
 
-/*
- *	TaskControl controls "2. BLOCAGE ENTREE PALETTISEUR"
- *	It's the barrier that let the packages in to one spot before the elevator
- *
- */
-void vTaskControl (void *pvParameters) {
-	while (1) {
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-		FACTORY_IO_Actuators_Set(4098);
-		vTaskDelay(1500); // time to let two packages pass.
-		FACTORY_IO_Actuators_Set(4102);
-	}
-		vTaskDelay(50);
-}
 
 /*
  * 	Clock configuration for the Nucleo STM32F072RB board

@@ -12,6 +12,7 @@
 #include "stm32f0xx.h"
 // BSP functions
 #include "bsp.h"
+#include "factory_io.h"
 // FreeRTOS headers
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
@@ -19,8 +20,13 @@
 #include "timers.h"
 #include "semphr.h"
 #include "queue.h"
-#include "event_groups.h"
 #include "stream_buffer.h"
+#include "event_groups.h"
+// Developped Components
+#include "blocker.h"
+#include "distributor.h"
+
+
 
 //Define actuators
 #define ACT_DISTRIBUTION_CARTONS 	                    1           // (1 << 0)
@@ -63,6 +69,14 @@
 #define SEN_ASCENSEUR_EN_MOUVEMENT		                (1 << 12)				//1 quand mouvement
 #define SEN_ENTREE_PALETTE		                        (1 << 13)				//1 quand palette
 #define SEN_BUTEE_CARTON		                        (1 << 14)     //(13)	//1 quand carton
+
+
+#define	EVENT_SEN_CARTON_DISTRIBUE		( (EventBits_t)( 0x01 <<0) )
+#define EVENT_SEN_ENTREE_PALETTISEUR	( (EventBits_t)( 0x01 <<1) )
+#define EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR	( (EventBits_t)( 0x01 <<2) )
+
+/* Global handles */
+extern EventGroupHandle_t	sensorsEventGroup;
 
 /* Global functions */
 
