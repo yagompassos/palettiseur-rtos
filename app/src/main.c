@@ -49,7 +49,7 @@ int main(void)
 	xSemCartons = xSemaphoreCreateBinary();
 	xSem2 = xSemaphoreCreateBinary();
 	sensorsEventGroup = xEventGroupCreate();
-	xSubscribeQueue = xQueueCreate(4, sizeof(msg_t));
+	xSubscribeQueue = xQueueCreate(16, sizeof(msg_t));
 	xWriteQueue = xQueueCreate(4, sizeof(msg_t));
 
 	// Register Trace events
@@ -160,53 +160,52 @@ void vTaskSensorMonitor (void *pvParameters){
 void vTaskPub (void *pvParameters)
 {
 	sensor_sub_msg_t msg;
-	sensor_sub_msg_t table[SUBSCRIPTION_TABLE_SIZE];
+	sensor_sub_msg_t subscriptions[SUBSCRIPTION_TABLE_SIZE];
 	uint8_t sensor[SENSOR_TABLE_SIZE];
 	portTickType xLastWakeTime;
-	uint8_t available, subscribed;
-	int slot;
+	uint8_t isDuplicate;
+	int8_t slotAvailable;
 	uint8_t rx_byte;
 
 	xLastWakeTime = xTaskGetTickCount();
 
 	// Earase tables
 	for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++){
-		table[i].semaph_id = 0;
-		table[i].sensor_id = 0;
-		table[i].sensor_state = 0;
+		subscriptions[i].semaph_id = 0;
+		subscriptions[i].sensor_id = 0;
+		subscriptions[i].sensor_state = 0;
 	}
 	for (int i=0; i<SENSOR_TABLE_SIZE; i++)
 		sensor[i] = 0;
 
 	while(1){
-		// SUBSCRIBE QUEUE DEMAND
+		// Subscribe queue demand
 		if (xQueueReceive(xSubscribeQueue, &msg, 0) == pdTRUE ) {
-//			my_printf("\r\nSubscribing : SemID=%d SensID=%d State=%d\n", msg.semaph_id, msg.sensor_id, msg.sensor_state);
+			my_printf("\r\n[Publisher] Subscribing : SemID=%d SensID=%d State=%d\n", msg.semaph_id, msg.sensor_id, msg.sensor_state);
+
+			slotAvailable = -1;
+
 			// Verify if its already subscribed
-			subscribed = pdFALSE;
-			available = pdFALSE;
-			for (int i=SUBSCRIPTION_TABLE_SIZE-1; i>=0; i--) {
-				if (msg.semaph_id == table[i].semaph_id) {
-					my_printf("\rSubscription already exists\n");
-					subscribed = pdTRUE;
-				}
-				if (table[i].semaph_id == 0){
-					available = pdTRUE;
-					slot = i;
-				}
+			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
+			{
+				if ((msg.semaph_id == subscriptions[i].semaph_id) && (msg.sensor_id == subscriptions[i].sensor_id) && (msg.sensor_state == subscriptions[i].sensor_state))
+					isDuplicate = pdTRUE;
+				if (subscriptions[i].semaph_id == 0)
+					slotAvailable = i;
 			}
-			if (subscribed == pdFALSE && available == pdTRUE) {
-				my_printf("\rAdding subscription to slot [%d]\n", slot);
-				table[slot] = msg;
+
+			// Add subscription
+			if (isDuplicate == pdFALSE && slotAvailable != -1) {
+				my_printf("\r[Publisher] Adding subscription to slot [%d]\n", slotAvailable);
+				subscriptions[slotAvailable] = msg;
 			}
-//			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-//				my_printf("\r[%d] %d %d %d\n", i, table[i].semaph_id, table[i].sensor_id, table[i].sensor_state);
-		} else {
-			my_printf(".");
 		}
 
-		xEventGroupWaitBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE, pdFALSE, pdFALSE, 0);
-		xSemaphoreGive(xSemCartons);
+		// Receives Sensors states and change sensors table.
+		if (FACTORY_IO_Sensors_Get(SEN_CARTON_DISTRIBUE) == 1) {
+			xSemaphoreGive(xSemCartons);
+			my_printf("\r[Publisher] Sensor em 0.\n");
+		}
 
 		// USART KEYBOARD INTERRUPTIONS
 //		if ( (USART2->ISR & USART_ISR_RXNE) == USART_ISR_RXNE ) {
@@ -231,7 +230,7 @@ void vTaskPub (void *pvParameters)
 //			my_printf("\r\n====SENSORS====\n");
 //			for (int i=0; i<SENSOR_TABLE_SIZE; i++)
 //				my_printf("\r[%d] %d\n", i, sensor[i]);
-		}
+
 
 		/* VERIFY SUBSCRIPTION ATTENDED RESULTS
 		for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++){
@@ -255,14 +254,18 @@ void vTaskPub (void *pvParameters)
 		*/
 
 	vTaskDelayUntil(&xLastWakeTime, 200);
+	//vTaskDelay(400);
+	}
 }
 
-vTaskControlCartons (void *pvParameters) {
+void vTaskControlCartons (void *pvParameters) {
 	sensor_sub_msg_t msg1 = {ID_SEMAPHORE_CARTON, SEN_CARTON_DISTRIBUE, 0};
 	sensor_sub_msg_t msg2 = {ID_SEMAPHORE_CARTON, SEN_CARTON_DISTRIBUE, 1};
+	my_printf("[tache cartons] criada.\r\n");
 
 	while(1) {
 		xQueueSendToBack(xSubscribeQueue, &msg1, 0);
+		my_printf("[tache cartons] enviando mensagem: SemID=%d SensID=%d State=%d\n");
 		xSemaphoreTake(xSemCartons, portMAX_DELAY);
 		my_printf("[tache cartons] RECEBI\r\n");
 	}
@@ -270,7 +273,7 @@ vTaskControlCartons (void *pvParameters) {
 }
 
 
-vTaskWrite (void *pvParameters) {
+void vTaskWrite (void *pvParameters) {
 	sensor_sub_msg_t cmd_received;
 	static uint32_t actuator_current_mask = 0;
 

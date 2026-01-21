@@ -1,0 +1,50 @@
+!SESSION 2026-01-21 13:29:22.436 -----------------------------------------------
+eclipse.buildId=Version 1.18.1
+java.version=21.0.3
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=fr_FR
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2026-01-21 13:31:34.935
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2026-01-21 13:31:34.937
+!MESSAGE Log4j2 initialized with config file C:\Users\yago.milagres-passos\Documents\workspaceSTMCubeIDE\palettiseur-rtos\.metadata\.log4j2.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2026-01-21 13:31:42.075
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.core.jobs 2 2 2026-01-21 13:31:57.586
+!MESSAGE Job found still running after platform shutdown.  Jobs should be canceled by the plugin that scheduled them during shutdown: org.eclipse.ui.internal.Workbench$39 RUNNING
+	 at java.base/java.lang.ProcessImpl.waitForInterruptibly(Native Method)
+	 at java.base/java.lang.ProcessImpl.waitFor(ProcessImpl.java:569)
+	 at com.teamdev.jxbrowser.internal.xz.SevenZip.waitFor(SevenZip.java:120)
+	 at com.teamdev.jxbrowser.internal.xz.SevenZip.decompress(SevenZip.java:116)
+	 at com.teamdev.jxbrowser.internal.xz.XzExtractor.extract(XzExtractor.java:61)
+	 at com.teamdev.jxbrowser.internal.OfficialDelivery.lambda$deliverTo$0(OfficialDelivery.java:43)
+	 at com.teamdev.jxbrowser.internal.PrivilegedActions.lambda$doPrivileged$0(PrivilegedActions.java:36)
+	 at java.base/java.security.AccessController.doPrivileged(AccessController.java:319)
+	 at com.teamdev.jxbrowser.internal.PrivilegedActions.doPrivileged(PrivilegedActions.java:35)
+	 at com.teamdev.jxbrowser.internal.OfficialDelivery.deliverTo(OfficialDelivery.java:40)
+	 at com.teamdev.jxbrowser.engine.ChromiumBinaries.lambda$deliverTo$0(ChromiumBinaries.java:147)
+	 at com.teamdev.jxbrowser.engine.ChromiumBinaries.trySynchronized(ChromiumBinaries.java:177)
+	 at com.teamdev.jxbrowser.engine.ChromiumBinaries.deliverTo(ChromiumBinaries.java:142)
+	 at com.teamdev.jxbrowser.engine.ChromiumBinaries.deliverTo(ChromiumBinaries.java:101)
+	 at com.teamdev.jxbrowser.engine.internal.EngineImpl.newInstance(EngineImpl.java:150)
+	 at com.teamdev.jxbrowser.engine.Engine.newInstance(Engine.java:163)
+	 at com.st.components.swing.JxBrowserEngine.initBrowser(JxBrowserEngine.java:155)
+	 at com.st.components.swing.JxBrowserEngine.<init>(JxBrowserEngine.java:61)
+	 at com.st.components.swing.JxBrowserEngine.getInstance(JxBrowserEngine.java:125)
+	 at com.st.microxplorer.plugins.userauth.WebApp.<init>(WebApp.java:165)
+	 at com.st.microxplorer.plugins.userauth.WebApp.getInstance(WebApp.java:773)
+	 at com.st.microxplorer.plugins.userauth.UserAuth.getBrowserView(UserAuth.java:486)
+	 at com.st.microxplorer.plugins.userauth.UserAuth.activatePlugin(UserAuth.java:191)
+	 at com.st.stm32cube.common.mx.userauth.UserAuthAdapter.<init>(UserAuthAdapter.java:29)
+	 at com.st.stm32cube.common.mx.userauth.UserAuthProvider.getUserAuthAdapter(UserAuthProvider.java:16)
+	 at com.st.stm32cube.common.ecosystemintegration.ui.core.MCUEcoSystemIntegrationUiHelper.getUserAuth(MCUEcoSystemIntegrationUiHelper.java:100)
+	 at com.st.stm32cube.ide.mcu.userauth.UserAuthStartup.earlyStartup(UserAuthStartup.java:32)
+	 at org.eclipse.ui.internal.EarlyStartupRunnable.runEarlyStartup(EarlyStartupRunnable.java:79)
+	 at org.eclipse.ui.internal.EarlyStartupRunnable.run(EarlyStartupRunnable.java:55)
+	 at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	 at org.eclipse.ui.internal.Workbench$39.run(Workbench.java:2733)
+	 at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)

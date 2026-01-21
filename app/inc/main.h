@@ -26,8 +26,8 @@
 #include "blocker.h"
 #include "distributor.h"
 
-#define SUBSCRIPTION_TABLE_SIZE 4
-#define SENSOR_TABLE_SIZE 2
+#define SUBSCRIPTION_TABLE_SIZE 16
+#define SENSOR_TABLE_SIZE 13
 
 typedef struct
 {
