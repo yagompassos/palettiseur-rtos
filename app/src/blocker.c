@@ -13,7 +13,7 @@
  *	TaskControl controls "2. BLOCAGE ENTREE PALETTISEUR"
  *	It's the barrier that let the packages in to one spot before the elevator
  *
- */
+
 void vTaskControlBlocker (void *pvParameters) {
 	while (1) {
 		xEventGroupWaitBits(sensorsEventGroup, EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR, pdFALSE, pdFALSE, portMAX_DELAY);
@@ -25,3 +25,5 @@ void vTaskControlBlocker (void *pvParameters) {
 	}
 	vTaskDelay(50);
 }
+
+*/

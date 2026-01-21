@@ -26,6 +26,23 @@
 #include "blocker.h"
 #include "distributor.h"
 
+#define SUBSCRIPTION_TABLE_SIZE 4
+#define SENSOR_TABLE_SIZE 2
+
+typedef struct
+{
+	uint8_t semaph_id; 		 // Semaphore ID to use for publication
+	uint8_t sensor_id; 		 // Awaited sensor ID
+	uint8_t sensor_state;	 // Awaited sensor State
+} sensor_sub_msg_t;
+
+typedef struct
+{
+	uint8_t actuator_id; 	 // Awaited sensor ID
+	uint8_t actuator_state;	 // Awaited sensor State
+} actuator_cmd_msg_t;
+
+typedef uint8_t msg_t[sizeof(sensor_sub_msg_t)];
 
 
 //Define actuators
@@ -70,10 +87,23 @@
 #define SEN_ENTREE_PALETTE		                        (1 << 13)				//1 quand palette
 #define SEN_BUTEE_CARTON		                        (1 << 14)     //(13)	//1 quand carton
 
+#define ID_SEMAPHORE_CARTON		1
 
-#define	EVENT_SEN_CARTON_DISTRIBUE		( (EventBits_t)( 0x01 <<0) )
-#define EVENT_SEN_ENTREE_PALETTISEUR	( (EventBits_t)( 0x01 <<1) )
-#define EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR	( (EventBits_t)( 0x01 <<2) )
+
+#define	EVENT_SEN_CARTON_DISTRIBUE			( (EventBits_t)( 0x01 <<0) )
+#define EVENT_SEN_CARTON_ENVOYE 	    	( (EventBits_t)( 0x01 <<1) )
+#define EVENT_SEN_ENTREE_PALETTISEUR  		( (EventBits_t)( 0x01 <<2) )
+#define EVENT_SEN_PORTE_OUVERTE 	    	( (EventBits_t)( 0x01 <<3) )
+#define EVENT_SEN_LIMITE_POUSSOIR 	    	( (EventBits_t)( 0x01 <<4) )
+#define EVENT_SEN_CLAMPED 	            	( (EventBits_t)( 0x01 <<5) )
+#define EVENT_SEN_ASCENSEUR_ETAGE_RDC 		( (EventBits_t)( 0x01 <<6) )
+#define EVENT_SEN_ASCENSEUR_ETAGE_1 		( (EventBits_t)( 0x01 <<7) )
+#define EVENT_SEN_ASCENSEUR_ETAGE_2     	( (EventBits_t)( 0x01 <<8) )
+#define EVENT_SEN_SORTIE_PALETTE        	( (EventBits_t)( 0x01 <<9) )
+#define EVENT_SEN_LIMITE_PORTE		    	( (EventBits_t)( 0x01 <<10) )
+#define EVENT_SEN_ASCENSEUR_EN_MOUVEMENT 	( (EventBits_t)( 0x01 <<11) )
+#define EVENT_SEN_ENTREE_PALETTE			( (EventBits_t)( 0x01 <<12) )
+#define EVENT_SEN_BUTEE_CARTON		    	( (EventBits_t)( 0x01 <<13) )
 
 /* Global handles */
 extern EventGroupHandle_t	sensorsEventGroup;

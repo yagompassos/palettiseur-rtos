@@ -13,9 +13,9 @@
 
 /*
  * Click at the blue button at your board, this generates new packages (cartons) to the scene.
- */
 void vTaskDistribuitionCardBoards (void *pvParameters) {
 	while (1) {
+		my_printf("sou eu\r\n");
 		xEventGroupWaitBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR, pdFALSE, pdFALSE, portMAX_DELAY);
 		FACTORY_IO_Actuators_Modify(1, ACT_DISTRIBUTION_CARTONS);
 		vTaskDelay(100);
@@ -23,3 +23,4 @@ void vTaskDistribuitionCardBoards (void *pvParameters) {
 	}
 	vTaskDelay(50);
 }
+*/
