@@ -9,9 +9,11 @@
 
 //Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
+void eraseSubscription (sensor_sub_msg_t *subscription);
+
 
 // FreeRTOS tasks
-void vTaskPub 	(void *pvParameters);
+void vTaskRead 	(void *pvParameters);
 void vTaskSensorMonitor(void *pvParameters);
 void vTaskControlCartons (void *pvParameters);
 void vTaskSTOP(void *pvParameters);
@@ -49,20 +51,20 @@ int main(void)
 	xSemCartons = xSemaphoreCreateBinary();
 	xSem2 = xSemaphoreCreateBinary();
 	sensorsEventGroup = xEventGroupCreate();
-	xSubscribeQueue = xQueueCreate(16, sizeof(msg_t));
-	xWriteQueue = xQueueCreate(4, sizeof(msg_t));
+	xSubscribeQueue = xQueueCreate(8, sizeof(sensor_sub_msg_t));
+	xWriteQueue = xQueueCreate(8, sizeof(actuator_cmd_msg_t));
 
 	// Register Trace events
 	// ue1 = xTraceRegisterString("state");
 
 	// Creating FreeRTOS tasks
 //	xTaskCreate(vTaskSensorMonitor, "Task_Sensor_Monitor", 256, NULL, 3, NULL);
-	xTaskCreate(vTaskPub, "Task_Pub", 256, NULL, 3, NULL);
+	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
 	xTaskCreate(vTaskControlCartons, "Task_Control_Cartons", 128, NULL, 1, NULL);
 	//	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
 //	xTaskCreate(vTaskDistribuitionCardBoards, "Task_DistribuitionCardBoards", 256, NULL, 2, NULL);
 
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
+	//FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
 
@@ -157,7 +159,7 @@ void vTaskSensorMonitor (void *pvParameters){
     }
 }
 
-void vTaskPub (void *pvParameters)
+void vTaskRead (void *pvParameters)
 {
 	sensor_sub_msg_t msg;
 	sensor_sub_msg_t subscriptions[SUBSCRIPTION_TABLE_SIZE];
@@ -201,11 +203,6 @@ void vTaskPub (void *pvParameters)
 			}
 		}
 
-		// Receives Sensors states and change sensors table.
-		if (FACTORY_IO_Sensors_Get(SEN_CARTON_DISTRIBUE) == 1) {
-			xSemaphoreGive(xSemCartons);
-			my_printf("\r[Publisher] Sensor em 0.\n");
-		}
 
 		// USART KEYBOARD INTERRUPTIONS
 //		if ( (USART2->ISR & USART_ISR_RXNE) == USART_ISR_RXNE ) {
@@ -231,22 +228,46 @@ void vTaskPub (void *pvParameters)
 //			for (int i=0; i<SENSOR_TABLE_SIZE; i++)
 //				my_printf("\r[%d] %d\n", i, sensor[i]);
 
+		// VERIFY SUBSCRIPTION ATTENDED RESULTS
+			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
+			{
+				if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
+				{
+					if (FACTORY_IO_Sensors_Get(subscriptions[i].sensor_id) == subscriptions[i].sensor_state)
+					{
+						switch (subscriptions[i].semaph_id)
+						{
+							case ID_SEMAPH_CARTON:
+								xSemaphoreGive(xSemCartons);
+								break;
 
-		/* VERIFY SUBSCRIPTION ATTENDED RESULTS
-		for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++){
-			if (table[i].sem_id != 0){ // verify if it's a subscription or just an empty space
-				for(int j=0; j<SENSOR_TABLE_SIZE; j++){
-					if (table[i].sensor_id == j+1 && table[i].sensor_state == sensor[j]){
-						my_printf("\rGiving Semaphore #%d\n", table[i].sem_id);
-						if (table[i].sem_id == 1)
+							default:
+								break;
+						}
+
+						if (subscriptions[i].sub_mode == ONE_SHOT)
+							eraseSubscription(&subscriptions[i]);
+					}
+				}
+			}
+
+		/*// VERIFY SUBSCRIPTION ATTENDED RESULTS
+		for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
+		{
+			if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
+			{
+				for (int j=0; j<SENSOR_TABLE_SIZE; j++) {
+					if (subscriptions[i].sensor_id == j+1 && subscriptions[i].sensor_state == sensor[j]) {
+						my_printf("\rGiving Semaphore #%d\n", subscriptions[i].semaph_id);
+						if (subscriptions[i].semaph_id == 1)
 							xSemaphoreGive(xSem1);
-						else if (table[i].sem_id == 2)
+						else if (subscriptions[i].semaph_id == 2)
 							xSemaphoreGive(xSem2);
-						table[i].sem_id	= 0;
-						table[i].sensor_id	= 0;
-						table[i].sensor_state = 0;
+						subscriptions[i].semaph_id	= 0;
+						subscriptions[i].sensor_id	= 0;
+						subscriptions[i].sensor_state = 0;
 						for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-							my_printf("\r[%d] %d %d %d\n", i, table[i].sem_id, table[i].sensor_id, table[i].sensor_state);
+							my_printf("\r[%d] %d %d %d\n", i, subscriptions[i].semaph_id, subscriptions[i].sensor_id, subscriptions[i].sensor_state);
 					}
 				}
 			}
@@ -259,15 +280,22 @@ void vTaskPub (void *pvParameters)
 }
 
 void vTaskControlCartons (void *pvParameters) {
-	sensor_sub_msg_t msg1 = {ID_SEMAPHORE_CARTON, SEN_CARTON_DISTRIBUE, 0};
-	sensor_sub_msg_t msg2 = {ID_SEMAPHORE_CARTON, SEN_CARTON_DISTRIBUE, 1};
-	my_printf("[tache cartons] criada.\r\n");
+	sensor_sub_msg_t sub_msg1 = {ONE_SHOT, ID_SEMAPH_CARTON, SEN_CARTON_DISTRIBUE, ACTIVE_LOW};
+	sensor_sub_msg_t sub_msg2 = {ONE_SHOT, ID_SEMAPH_CARTON, SEN_CARTON_DISTRIBUE, IDLE_LOW};
 
 	while(1) {
-		xQueueSendToBack(xSubscribeQueue, &msg1, 0);
-		my_printf("[tache cartons] enviando mensagem: SemID=%d SensID=%d State=%d\n");
+		xQueueSendToBack(xSubscribeQueue, &sub_msg1, 0);
+		my_printf("[tache cartons] enviando mensagem: SemID=%d SensID=%d State=%d\n", sub_msg1.semaph_id, sub_msg1.sensor_id, sub_msg1.sensor_state);
 		xSemaphoreTake(xSemCartons, portMAX_DELAY);
 		my_printf("[tache cartons] RECEBI\r\n");
+		FACTORY_IO_Actuators_Modify(ACTIVE_HIGH, ACT_TAPIS_DISTRIBUTION_CARTONS);
+
+		xQueueSendToBack(xSubscribeQueue, &sub_msg2, 0);
+		my_printf("[tache cartons] enviando mensagem: SemID=%d SensID=%d State=%d\n", sub_msg2.semaph_id, sub_msg2.sensor_id, sub_msg2.sensor_state);
+		xSemaphoreTake(xSemCartons, portMAX_DELAY);
+		my_printf("[tache cartons] RECEBI\r\n");
+		FACTORY_IO_Actuators_Modify(IDLE_HIGH, ACT_TAPIS_DISTRIBUTION_CARTONS);
+
 	}
 	vTaskDelay(1000);
 }
@@ -300,6 +328,12 @@ void vTaskSTOP (void *pvParameters) {
 	}
 }
 
+void eraseSubscription (sensor_sub_msg_t *subscription) {
+	subscription->sub_mode = 0;
+	subscription->semaph_id = 0;
+	subscription->sensor_id = 0;
+	subscription->sensor_state = 0;
+}
 
 /*
  * 	Clock configuration for the Nucleo STM32F072RB board

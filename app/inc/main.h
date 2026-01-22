@@ -26,11 +26,14 @@
 #include "blocker.h"
 #include "distributor.h"
 
-#define SUBSCRIPTION_TABLE_SIZE 16
+#define SUBSCRIPTION_TABLE_SIZE 13
 #define SENSOR_TABLE_SIZE 13
+#define ONE_SHOT 0
+#define PERMANENT 1
 
 typedef struct
 {
+	uint8_t sub_mode;		 // Permanent (1) or one-shot (0)
 	uint8_t semaph_id; 		 // Semaphore ID to use for publication
 	uint8_t sensor_id; 		 // Awaited sensor ID
 	uint8_t sensor_state;	 // Awaited sensor State
@@ -42,7 +45,7 @@ typedef struct
 	uint8_t actuator_state;	 // Awaited sensor State
 } actuator_cmd_msg_t;
 
-typedef uint8_t msg_t[sizeof(sensor_sub_msg_t)];
+//typedef uint8_t msg_t[sizeof(sensor_sub_msg_t)];
 
 
 //Define actuators
@@ -87,7 +90,12 @@ typedef uint8_t msg_t[sizeof(sensor_sub_msg_t)];
 #define SEN_ENTREE_PALETTE		                        (1 << 13)				//1 quand palette
 #define SEN_BUTEE_CARTON		                        (1 << 14)     //(13)	//1 quand carton
 
-#define ID_SEMAPHORE_CARTON		1
+#define ID_SEMAPH_CARTON		1
+
+#define ACTIVE_HIGH 1
+#define IDLE_HIGH 0
+#define ACTIVE_LOW 0
+#define IDLE_LOW 1
 
 
 #define	EVENT_SEN_CARTON_DISTRIBUE			( (EventBits_t)( 0x01 <<0) )
