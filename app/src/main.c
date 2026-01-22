@@ -14,12 +14,9 @@ void eraseSubscription (sensor_sub_msg_t *subscription);
 
 // FreeRTOS tasks
 void vTaskRead 	(void *pvParameters);
-void vTaskSensorMonitor(void *pvParameters);
-void vTaskControlCartons (void *pvParameters);
 void vTaskSTOP(void *pvParameters);
 
 // Kernel Objects
-EventGroupHandle_t sensorsEventGroup = NULL;
 xQueueHandle xSubscribeQueue, xWriteQueue;
 xSemaphoreHandle xSem1, xSem2, xSemCartons;
 
@@ -50,7 +47,6 @@ int main(void)
 	// Create Event Group
 	xSemCartons = xSemaphoreCreateBinary();
 	xSem2 = xSemaphoreCreateBinary();
-	sensorsEventGroup = xEventGroupCreate();
 	xSubscribeQueue = xQueueCreate(8, sizeof(sensor_sub_msg_t));
 	xWriteQueue = xQueueCreate(8, sizeof(actuator_cmd_msg_t));
 
@@ -58,10 +54,9 @@ int main(void)
 	// ue1 = xTraceRegisterString("state");
 
 	// Creating FreeRTOS tasks
-//	xTaskCreate(vTaskSensorMonitor, "Task_Sensor_Monitor", 256, NULL, 3, NULL);
 	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
-	xTaskCreate(vTaskControlCartons, "Task_Control_Cartons", 128, NULL, 1, NULL);
-	//	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
+	xTaskCreate(vTaskDistributor, "Task_Distributor", 128, NULL, 1, NULL);
+//	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
 //	xTaskCreate(vTaskDistribuitionCardBoards, "Task_DistribuitionCardBoards", 256, NULL, 2, NULL);
 
 	//FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
@@ -79,95 +74,14 @@ int main(void)
 	}
 }
 
-// Task Sensor Monitor receives value of all scene sensors and notifies tasks.
-void vTaskSensorMonitor (void *pvParameters){
-    while(1){
-    	// DEVE SE LER O factoryIO COM update TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
-//    	FACTORY_IO_update();
-
-    	if (FACTORY_IO_Sensors_Get(SEN_CARTON_DISTRIBUE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE);
-
-        if (FACTORY_IO_Sensors_Get(SEN_CARTON_ENVOYE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_CARTON_ENVOYE);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_CARTON_ENVOYE);
-
-        if (FACTORY_IO_Sensors_Get(SEN_ENTREE_PALETTISEUR))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR);
-
-    	if (FACTORY_IO_Sensors_Get(SEN_PORTE_OUVERTE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_PORTE_OUVERTE);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_PORTE_OUVERTE);
-
-        if (FACTORY_IO_Sensors_Get(SEN_LIMITE_POUSSOIR))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_LIMITE_POUSSOIR);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_LIMITE_POUSSOIR);
-
-        if (FACTORY_IO_Sensors_Get(SEN_CLAMPED))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_CLAMPED);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_CLAMPED);
-
-    	if (FACTORY_IO_Sensors_Get(SEN_ASCENSEUR_ETAGE_RDC))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_ETAGE_RDC);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_ETAGE_RDC);
-
-        if (FACTORY_IO_Sensors_Get(SEN_ASCENSEUR_ETAGE_1))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_ETAGE_1);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_ETAGE_1);
-
-        if (FACTORY_IO_Sensors_Get(SEN_ASCENSEUR_ETAGE_2))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_ETAGE_2);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_ETAGE_2);
-
-        if (FACTORY_IO_Sensors_Get(SEN_SORTIE_PALETTE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_SORTIE_PALETTE);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_SORTIE_PALETTE);
-
-        if (FACTORY_IO_Sensors_Get(SEN_LIMITE_PORTE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_LIMITE_PORTE);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_LIMITE_PORTE);
-
-    	if (FACTORY_IO_Sensors_Get(SEN_ASCENSEUR_EN_MOUVEMENT))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_EN_MOUVEMENT);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ASCENSEUR_EN_MOUVEMENT);
-
-        if (FACTORY_IO_Sensors_Get(SEN_ENTREE_PALETTE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTE);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTE);
-
-        if (FACTORY_IO_Sensors_Get(SEN_BUTEE_CARTON))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_BUTEE_CARTON);
-		else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_BUTEE_CARTON);
-
-        vTaskDelay(20);
-    }
-}
 
 void vTaskRead (void *pvParameters)
 {
 	sensor_sub_msg_t msg;
 	sensor_sub_msg_t subscriptions[SUBSCRIPTION_TABLE_SIZE];
-	uint8_t sensor[SENSOR_TABLE_SIZE];
 	portTickType xLastWakeTime;
 	uint8_t isDuplicate;
 	int8_t slotAvailable;
-	uint8_t rx_byte;
 
 	xLastWakeTime = xTaskGetTickCount();
 
@@ -177,8 +91,7 @@ void vTaskRead (void *pvParameters)
 		subscriptions[i].sensor_id = 0;
 		subscriptions[i].sensor_state = 0;
 	}
-	for (int i=0; i<SENSOR_TABLE_SIZE; i++)
-		sensor[i] = 0;
+
 
 	while(1){
 		// Subscribe queue demand
@@ -204,30 +117,6 @@ void vTaskRead (void *pvParameters)
 		}
 
 
-		// USART KEYBOARD INTERRUPTIONS
-//		if ( (USART2->ISR & USART_ISR_RXNE) == USART_ISR_RXNE ) {
-//			rx_byte = USART2->RDR;
-//			switch(rx_byte){
-//			case ('a'):
-//				sensor[0] = 0;
-//				break;
-//			case ('b'):
-//				sensor[0] = 1;
-//				break;
-//			case ('c'):
-//				sensor[1] = 0;
-//				break;
-//			case ('d'):
-//				sensor[1] = 1;
-//				break;
-//			default:
-//				break;
-//			}
-
-//			my_printf("\r\n====SENSORS====\n");
-//			for (int i=0; i<SENSOR_TABLE_SIZE; i++)
-//				my_printf("\r[%d] %d\n", i, sensor[i]);
-
 		// VERIFY SUBSCRIPTION ATTENDED RESULTS
 			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
 			{
@@ -251,53 +140,9 @@ void vTaskRead (void *pvParameters)
 				}
 			}
 
-		/*// VERIFY SUBSCRIPTION ATTENDED RESULTS
-		for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-		{
-			if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
-			{
-				for (int j=0; j<SENSOR_TABLE_SIZE; j++) {
-					if (subscriptions[i].sensor_id == j+1 && subscriptions[i].sensor_state == sensor[j]) {
-						my_printf("\rGiving Semaphore #%d\n", subscriptions[i].semaph_id);
-						if (subscriptions[i].semaph_id == 1)
-							xSemaphoreGive(xSem1);
-						else if (subscriptions[i].semaph_id == 2)
-							xSemaphoreGive(xSem2);
-						subscriptions[i].semaph_id	= 0;
-						subscriptions[i].sensor_id	= 0;
-						subscriptions[i].sensor_state = 0;
-						for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-							my_printf("\r[%d] %d %d %d\n", i, subscriptions[i].semaph_id, subscriptions[i].sensor_id, subscriptions[i].sensor_state);
-					}
-				}
-			}
-		}
-		*/
 
 	vTaskDelayUntil(&xLastWakeTime, 200);
-	//vTaskDelay(400);
 	}
-}
-
-void vTaskControlCartons (void *pvParameters) {
-	sensor_sub_msg_t sub_msg1 = {ONE_SHOT, ID_SEMAPH_CARTON, SEN_CARTON_DISTRIBUE, ACTIVE_LOW};
-	sensor_sub_msg_t sub_msg2 = {ONE_SHOT, ID_SEMAPH_CARTON, SEN_CARTON_DISTRIBUE, IDLE_LOW};
-
-	while(1) {
-		xQueueSendToBack(xSubscribeQueue, &sub_msg1, 0);
-		my_printf("[tache cartons] enviando mensagem: SemID=%d SensID=%d State=%d\n", sub_msg1.semaph_id, sub_msg1.sensor_id, sub_msg1.sensor_state);
-		xSemaphoreTake(xSemCartons, portMAX_DELAY);
-		my_printf("[tache cartons] RECEBI\r\n");
-		FACTORY_IO_Actuators_Modify(ACTIVE_HIGH, ACT_TAPIS_DISTRIBUTION_CARTONS);
-
-		xQueueSendToBack(xSubscribeQueue, &sub_msg2, 0);
-		my_printf("[tache cartons] enviando mensagem: SemID=%d SensID=%d State=%d\n", sub_msg2.semaph_id, sub_msg2.sensor_id, sub_msg2.sensor_state);
-		xSemaphoreTake(xSemCartons, portMAX_DELAY);
-		my_printf("[tache cartons] RECEBI\r\n");
-		FACTORY_IO_Actuators_Modify(IDLE_HIGH, ACT_TAPIS_DISTRIBUTION_CARTONS);
-
-	}
-	vTaskDelay(1000);
 }
 
 
@@ -311,7 +156,6 @@ void vTaskWrite (void *pvParameters) {
 	}
 	vTaskDelay(100);
 }
-
 
 
 /*

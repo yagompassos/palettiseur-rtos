@@ -12,6 +12,6 @@
 /*
  * Click at the blue button at your board, this generates new packages (cartons) to the scene.
  */
-void vTaskDistribuitionCardBoards (void *pvParameters);
+void vTaskDistributor (void *pvParameters);
 
 #endif /* INC_DISTRIBUTOR_H_ */
