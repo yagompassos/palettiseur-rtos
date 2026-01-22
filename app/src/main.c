@@ -11,14 +11,13 @@
 static uint8_t 	SystemClock_Config	(void);
 void eraseSubscription (sensor_sub_msg_t *subscription);
 
-
 // FreeRTOS tasks
 void vTaskRead 	(void *pvParameters);
 void vTaskSTOP(void *pvParameters);
 
 // Kernel Objects
 xQueueHandle xSubscribeQueue, xWriteQueue;
-xSemaphoreHandle xSem1, xSem2, xSemCartons;
+xSemaphoreHandle xSemDistributor, xSemBlocker;
 
 int main(void)
 {
@@ -44,9 +43,11 @@ int main(void)
 	// Read all states from the scene
 	FACTORY_IO_update();
 
-	// Create Event Group
-	xSemCartons = xSemaphoreCreateBinary();
-	xSem2 = xSemaphoreCreateBinary();
+	// Semaphores initializations
+	xSemDistributor = xSemaphoreCreateBinary();
+	xSemBlocker = xSemaphoreCreateBinary();
+
+	// Messague queues initialization
 	xSubscribeQueue = xQueueCreate(8, sizeof(sensor_sub_msg_t));
 	xWriteQueue = xQueueCreate(8, sizeof(actuator_cmd_msg_t));
 
@@ -56,11 +57,12 @@ int main(void)
 	// Creating FreeRTOS tasks
 	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
 	xTaskCreate(vTaskDistributor, "Task_Distributor", 128, NULL, 1, NULL);
+	xTaskCreate(vTaskBlocker, "Task_Blocker", 128, NULL, 1, NULL);
 //	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
 //	xTaskCreate(vTaskDistribuitionCardBoards, "Task_DistribuitionCardBoards", 256, NULL, 2, NULL);
 
 	//FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
+	//FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
 
 	// Start the Scheduler
@@ -126,8 +128,12 @@ void vTaskRead (void *pvParameters)
 					{
 						switch (subscriptions[i].semaph_id)
 						{
-							case ID_SEMAPH_CARTON:
-								xSemaphoreGive(xSemCartons);
+							case ID_SEMAPH_DISTRIBUTOR:
+								xSemaphoreGive(xSemDistributor);
+								break;
+
+							case ID_SEMAPH_BLOCKER:
+								xSemaphoreGive(xSemBlocker);
 								break;
 
 							default:
