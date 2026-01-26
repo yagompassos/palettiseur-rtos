@@ -23,7 +23,7 @@
 #include "stream_buffer.h"
 #include "event_groups.h"
 // Developped Components
-#include "blocker.h"
+#include "EntryPalletizer.h"
 #include "distributor.h"
 
 #define SUBSCRIPTION_TABLE_SIZE 13

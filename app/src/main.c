@@ -14,10 +14,12 @@ void eraseSubscription (sensor_sub_msg_t *subscription);
 // FreeRTOS tasks
 void vTaskRead 	(void *pvParameters);
 void vTaskSTOP(void *pvParameters);
+void vTaskBoxGenerator (void *pvParameters) ;
 
 // Kernel Objects
 xQueueHandle xSubscribeQueue, xWriteQueue;
 xSemaphoreHandle xSemDistributor, xSemBlocker;
+xSemaphoreHandle xMutexConveyor;
 
 int main(void)
 {
@@ -33,12 +35,7 @@ int main(void)
 	my_printf("\r\nConsole Ready!\r\n");
 	my_printf("SYSCLK = %d Hz\r\n", SystemCoreClock);
 
-	/*
-	 *  right now tracealyzer doesn't show much info... so its better to leave it like this
-	 *  This means TraceFacility its also deactivated in FreeRTOSConfig.h
-	 *  The program doesnt run if trace is activated but you havent opened Percepio Tracealyzer (so we better leave all commented right now)
-	 */
-	//	xTraceEnable(TRC_START);    // <====== We uncomment that when we want to see the results in tracealyzer
+	//	xTraceEnable(TRC_START);
 
 	// Read all states from the scene
 	FACTORY_IO_update();
@@ -47,23 +44,25 @@ int main(void)
 	xSemDistributor = xSemaphoreCreateBinary();
 	xSemBlocker = xSemaphoreCreateBinary();
 
+	// Mutex
+    xMutexConveyor = xSemaphoreCreateMutex();
+
 	// Messague queues initialization
 	xSubscribeQueue = xQueueCreate(8, sizeof(sensor_sub_msg_t));
 	xWriteQueue = xQueueCreate(8, sizeof(actuator_cmd_msg_t));
 
-	// Register Trace events
-	// ue1 = xTraceRegisterString("state");
 
 	// Creating FreeRTOS tasks
 	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
-	xTaskCreate(vTaskDistributor, "Task_Distributor", 128, NULL, 1, NULL);
-	xTaskCreate(vTaskBlocker, "Task_Blocker", 128, NULL, 1, NULL);
-//	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
-//	xTaskCreate(vTaskDistribuitionCardBoards, "Task_DistribuitionCardBoards", 256, NULL, 2, NULL);
+	xTaskCreate(vTaskEntryPalletizer, "Task_Blocker", 128, NULL, 1, NULL);
+	xTaskCreate(vTaskBoxGenerator, "Task_CartonGenerator", 64, NULL, 2, NULL);
 
-	//FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
-	//FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_CHARGER_PALETTISEUR);
+
+	xSemaphoreGive(xMutexConveyor);
 
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");
@@ -76,19 +75,34 @@ int main(void)
 	}
 }
 
+void vTaskBoxGenerator (void *pvParameters) {
+	while (1) {
+		//xSemaphoreTake(xMutexConveyor, portMAX_DELAY);
+		// Has the mutex, can generate other 2 boxes
+		FACTORY_IO_Actuators_Modify(1, ACT_DISTRIBUTION_CARTONS);
+		vTaskDelay(3500); // time for the 2nd box to be generated
+		FACTORY_IO_Actuators_Modify(0, ACT_DISTRIBUTION_CARTONS);
+		//xSemaphoreGive(xMutexConveyor);
+		vTaskDelay(5000);
+
+	}
+}
 
 void vTaskRead (void *pvParameters)
 {
 	sensor_sub_msg_t msg;
 	sensor_sub_msg_t subscriptions[SUBSCRIPTION_TABLE_SIZE];
 	portTickType xLastWakeTime;
-	uint8_t isDuplicate;
+	uint8_t isDuplicate = pdFALSE;
 	int8_t slotAvailable;
+	static uint8_t prev_sensor_state[SENSOR_TABLE_SIZE] = {0};
+
 
 	xLastWakeTime = xTaskGetTickCount();
 
 	// Earase tables
-	for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++){
+	for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++) {
+        subscriptions[i].sub_mode = 0;
 		subscriptions[i].semaph_id = 0;
 		subscriptions[i].sensor_id = 0;
 		subscriptions[i].sensor_state = 0;
@@ -100,21 +114,29 @@ void vTaskRead (void *pvParameters)
 		if (xQueueReceive(xSubscribeQueue, &msg, 0) == pdTRUE ) {
 			my_printf("\r\n[Publisher] Subscribing : SemID=%d SensID=%d State=%d\n", msg.semaph_id, msg.sensor_id, msg.sensor_state);
 
+			isDuplicate = pdFALSE;
 			slotAvailable = -1;
 
-			// Verify if its already subscribed
-			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-			{
-				if ((msg.semaph_id == subscriptions[i].semaph_id) && (msg.sensor_id == subscriptions[i].sensor_id) && (msg.sensor_state == subscriptions[i].sensor_state))
+			// Verify if it's already subscribed (same sensor, same state, same semaphore)
+			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++) {
+				if (subscriptions[i].semaph_id != 0 &&
+					subscriptions[i].sensor_id == msg.sensor_id &&
+					subscriptions[i].sensor_state == msg.sensor_state &&
+					subscriptions[i].semaph_id == msg.semaph_id) {
 					isDuplicate = pdTRUE;
-				if (subscriptions[i].semaph_id == 0)
-					slotAvailable = i;
+					break;
+				}
+				if (subscriptions[i].semaph_id == 0 && slotAvailable == -1) {
+					slotAvailable = i;  // Primeiro slot livre
+				}
 			}
 
 			// Add subscription
 			if (isDuplicate == pdFALSE && slotAvailable != -1) {
-				my_printf("\r[Publisher] Adding subscription to slot [%d]\n", slotAvailable);
+				//my_printf("[Publisher] Adding to slot [%d]\r\n", slotAvailable);
 				subscriptions[slotAvailable] = msg;
+			} else if (slotAvailable == -1) {
+				my_printf("[Publisher] ERROR: Subscription table full!\r\n");
 			}
 		}
 
@@ -124,25 +146,20 @@ void vTaskRead (void *pvParameters)
 			{
 				if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
 				{
-					if (FACTORY_IO_Sensors_Get(subscriptions[i].sensor_id) == subscriptions[i].sensor_state)
-					{
-						switch (subscriptions[i].semaph_id)
-						{
-							case ID_SEMAPH_DISTRIBUTOR:
-								xSemaphoreGive(xSemDistributor);
-								break;
+					uint8_t current = FACTORY_IO_Sensors_Get(subscriptions[i].sensor_id);
 
-							case ID_SEMAPH_BLOCKER:
-								xSemaphoreGive(xSemBlocker);
-								break;
+					if (current != prev_sensor_state[i]) {
+					    // EDGE detected
+					    if (current == subscriptions[i].sensor_state) {
+					        xSemaphoreGive(xSemBlocker);
 
-							default:
-								break;
-						}
+					        if (subscriptions[i].sub_mode == ONE_SHOT)
+					            eraseSubscription(&subscriptions[i]);
+					    }
 
-						if (subscriptions[i].sub_mode == ONE_SHOT)
-							eraseSubscription(&subscriptions[i]);
+					    prev_sensor_state[i] = current;
 					}
+
 				}
 			}
 
