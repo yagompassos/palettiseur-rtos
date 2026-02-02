@@ -7,15 +7,12 @@
 
 #include "main.h"
 
+// Kernel Objects
+xQueueHandle xSubscribeQueue, xWriteQueue;
+xSemaphoreHandle xSemBoxGenerator, xSemPalletGenerator, xSemDistributor, xSemBlocker, xSemPusher;
+
 //Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
-
-// FreeRTOS tasks
-void vTaskSensorMonitor(void *pvParameters);
-void vTaskSTOP(void *pvParameters);
-
-// Kernel Objects
-EventGroupHandle_t sensorsEventGroup = NULL;
 
 int main(void)
 {
@@ -31,30 +28,43 @@ int main(void)
 	my_printf("\r\nConsole Ready!\r\n");
 	my_printf("SYSCLK = %d Hz\r\n", SystemCoreClock);
 
-	/*
-	 *  right now tracealyzer doesn't show much info... so its better to leave it like this
-	 *  This means TraceFacility its also deactivated in FreeRTOSConfig.h
-	 *  The program doesnt run if trace is activated but you havent opened Percepio Tracealyzer (so we better leave all commented right now)
-	 */
-	//	xTraceEnable(TRC_START);    // <====== We uncomment that when we want to see the results in tracealyzer
+	//	xTraceEnable(TRC_START);
 
 	// Read all states from the scene
 	FACTORY_IO_update();
 
-	// Create Event Group
-	sensorsEventGroup = xEventGroupCreate();
+	// Semaphores initializations
+	xSemDistributor = xSemaphoreCreateBinary();
+	xSemBlocker = xSemaphoreCreateBinary();
+	xSemPusher = xSemaphoreCreateBinary();
+	xSemBoxGenerator = xSemaphoreCreateBinary();
+	xSemPalletGenerator = xSemaphoreCreateBinary();
 
-	// Register Trace events
-	// ue1 = xTraceRegisterString("state");
+	// Messague queues initialization
+	xSubscribeQueue = xQueueCreate(SUBSCRIPTION_TABLE_SIZE, sizeof(sensor_sub_msg_t));
+	xWriteQueue = xQueueCreate(SUBSCRIPTION_TABLE_SIZE, sizeof(actuator_cmd_msg_t));
 
 	// Creating FreeRTOS tasks
-	xTaskCreate(vTaskSensorMonitor, "Task_Sensor_Monitor", 256, NULL, 3, NULL);
-	xTaskCreate(vTaskControlBlocker, "Task_Control_Blocker", 128, NULL, 2, NULL);
-	xTaskCreate(vTaskDistribuitionCardBoards, "Task_DistribuitionCardBoards", 256, NULL, 2, NULL);
+	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
+	xTaskCreate(vTaskBoxGenerator, "Task_BoxGenerator", 64, NULL, 1, NULL);
+	xTaskCreate(vTaskPalletGenerator, "Task_PalletGenerator", 64, NULL, 1, NULL);
+	xTaskCreate(vTaskBlocker, "Task_Blocker", 128, NULL, 1, NULL);
+	xTaskCreate(vTaskPusher, "Task_Pusher", 64, NULL, 1, NULL);
 
+	// Roll every Conveyor in scene
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_CHARGER_PALETTISEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_PALETTE_VERS_ASCENSEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_PALETTE);
+
+
+	// Initialize with box generation
+	xSemaphoreGive(xSemBoxGenerator);
+	xSemaphoreGive(xSemPalletGenerator);
+
+
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");
 	vTaskStartScheduler();
@@ -66,46 +76,11 @@ int main(void)
 	}
 }
 
-// Task Sensor Monitor receives value of all scene sensors and notifies tasks.
-void vTaskSensorMonitor (void *pvParameters){
-    static uint8_t last_sensor_state = 1;
-    uint8_t current_sensor_state;
-    // Resource:
-    uint8_t space = 2;
-
-    while(1){
-    	// DEVE SE LER O factoryIO COM update TODA VEZ ANTES DE PUXAR O GET, CHECAR EMAILS.
-    	FACTORY_IO_update();
-
-        current_sensor_state = FACTORY_IO_Sensors_Get(SEN_ENTREE_PALETTISEUR);
-        if (current_sensor_state == 0) {
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR);
-			if (last_sensor_state == 1)
-				space--; {
-				if (space==0) {
-					xEventGroupSetBits(sensorsEventGroup, EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR);
-					space = 2;
-				}
-			}
-        } else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_ENTREE_PALETTISEUR | EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR);
 
 
-        if (FACTORY_IO_Sensors_Get(SEN_CARTON_DISTRIBUE))
-			xEventGroupSetBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE);
-        else
-			xEventGroupClearBits(sensorsEventGroup, EVENT_SEN_CARTON_DISTRIBUE);
-
-
-        last_sensor_state = current_sensor_state;
-
-        vTaskDelay(20);
-    }
-}
 
 /*
  * stop everything in scene
- */
 void vTaskSTOP (void *pvParameters) {
 	while (1) {
 		if (BSP_PB_GetState() == 1) {
@@ -116,6 +91,8 @@ void vTaskSTOP (void *pvParameters) {
 		vTaskDelay(50);
 	}
 }
+
+ */
 
 
 /*

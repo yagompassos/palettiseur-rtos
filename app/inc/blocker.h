@@ -14,6 +14,6 @@
  *	It's the barrier that let the packages in to one spot before the elevator
  *
  */
-void vTaskControlBlocker (void *pvParameters);
+void vTaskBlocker (void *pvParameters);
 
 #endif /* INC_BLOCKER_H_ */

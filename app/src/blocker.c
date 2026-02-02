@@ -6,22 +6,47 @@
  */
 
 #include "blocker.h"
-#include "factory_io.h"
-#include "FreeRTOS.h"
 #include "main.h"
+
+extern xSemaphoreHandle xSemBlocker, xSemBoxGenerator;
+extern xQueueHandle xSubscribeQueue;
+
 /*
- *	TaskControl controls "2. BLOCAGE ENTREE PALETTISEUR"
+ *	TaskBlocker controls "BLOCAGE ENTREE PALETTISEUR"
  *	It's the barrier that let the packages in to one spot before the elevator
  *
- */
-void vTaskControlBlocker (void *pvParameters) {
+*/
+void vTaskBlocker (void *pvParameters) {
+	sensor_sub_msg_t sub_entree_detecte = {ONE_SHOT, ID_SEMAPH_BLOCKER, SEN_ENTREE_PALETTISEUR, 1};
+	sensor_sub_msg_t sub_entree_passe = {ONE_SHOT, ID_SEMAPH_BLOCKER, SEN_ENTREE_PALETTISEUR, 0};
+
 	while (1) {
-		xEventGroupWaitBits(sensorsEventGroup, EVENT_2eme_CARDBOX_ENTREE_PALETTISEUR, pdFALSE, pdFALSE, portMAX_DELAY);
-		my_printf("blocking\r\n");
-		FACTORY_IO_Actuators_Modify(1, ACT_CHARGER_PALETTISEUR);
+		// Wait for first box to enter the sensor reading area
+		xQueueSendToBack(xSubscribeQueue, &sub_entree_detecte, 0);
+		xSemaphoreTake(xSemBlocker, portMAX_DELAY);
+
+		// Wait the box to leave the sensor reading area
+		xQueueSendToBack(xSubscribeQueue, &sub_entree_passe, 0);
+		xSemaphoreTake(xSemBlocker, portMAX_DELAY);
+
+		// Wait for SECOND box to enter the sensor reading area
+		xQueueSendToBack(xSubscribeQueue, &sub_entree_detecte, 0);
+		xSemaphoreTake(xSemBlocker, portMAX_DELAY);
+
+		// Wait the box to leave the sensor reading area
+		xQueueSendToBack(xSubscribeQueue, &sub_entree_passe, 0);
+		xSemaphoreTake(xSemBlocker, portMAX_DELAY);
+
+		// Send more boxes
+		xSemaphoreGive(xSemBoxGenerator);
+
+		// Open palletizer
 		FACTORY_IO_Actuators_Modify(0, ACT_BLOCAGE_ENTREE_PALETTISEUR);
-		vTaskDelay(1500); // time to let two packages pass.
+		vTaskDelay(1500);
 		FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
+
+		vTaskDelay(500);
 	}
-	vTaskDelay(50);
 }
+
+

@@ -35,6 +35,10 @@ python run.py
 
 6. Download the [palettiseur scene](https://gitlab.polytech.umontpellier.fr/tp_ostr_factoryio/factoryio-scene-palettiseur) and run it in Factory I/O
 7. Set your STM board for J-Link Segger (https://moodle.umontpellier.fr/mod/page/view.php?id=358464 e https://www.pomad.fr/tutorials/freertos/trace_streaming)
+7. * Setup up your debugger by going to Debugger Cofigurations .
+- click twice at STM32 C/C++ Application
+- click to the new file created 
+- in this file, open Debugger window.
 7. Run the debugger in STM32CubeIDE to program your board, and run the code.
 8. You should see the scene rolling in Factory I/O.
 

@@ -1,1 +1,15 @@
 /Debug/
+/Release/
+*.elf
+*.bin
+*.hex
+*.map
+*.su
+*.o
+*.d
+*.list
+
+.DS_Store
+Thumbs.db
+*.launch
+*.log
