@@ -29,6 +29,7 @@
 #include "palletGenerator.h"
 #include "blocker.h"
 #include "pusher.h"
+#include "elevator.h"
 
 #define SUBSCRIPTION_TABLE_SIZE 16
 #define SENSOR_TABLE_SIZE 13
@@ -94,9 +95,9 @@ typedef struct
 #define SEN_ENTREE_PALETTE		                        (1 << 13)
 #define SEN_BUTEE_CARTON		                        16384 			// (1 << 14 )    //(13)
 
-#define ID_SEMAPH_DISTRIBUTOR		1
-#define ID_SEMAPH_BLOCKER			2
-#define ID_SEMAPH_PUSHER			3
+#define ID_SEMAPH_BLOCKER			1
+#define ID_SEMAPH_PUSHER			2
+#define ID_SEMAPH_ELEVATOR			3
 
 
 #define ACTIVE_HIGH 1

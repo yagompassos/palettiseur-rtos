@@ -22,8 +22,6 @@ void vTaskPusher(void *pvParameters) {
 	sensor_sub_msg_t sub_box_arrived = {ONE_SHOT, ID_SEMAPH_PUSHER, SEN_BUTEE_CARTON, 1};
 	sensor_sub_msg_t sub_pusher_limit = {ONE_SHOT, ID_SEMAPH_PUSHER, SEN_LIMITE_POUSSOIR, 1};
 
-	my_printf("\r[pusher] bien cree\n");
-
 	while (1) {
 
 		// Wait for boxes to arrive

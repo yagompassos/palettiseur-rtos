@@ -5,15 +5,12 @@
  *      Author: yago.milagres-passos
  */
 
-
 #include "palletGenerator.h"
 #include "main.h"
 
 extern xSemaphoreHandle xSemPalletGenerator;
 
-
 void vTaskPalletGenerator ( void *pvParameters) {
-
 	while (1) {
 
 		// Wait for semaphore
@@ -21,7 +18,7 @@ void vTaskPalletGenerator ( void *pvParameters) {
 
 		// Generate 1 Pallet
 		FACTORY_IO_Actuators_Modify(1, ACT_DISTRIBUTION_PALETTE);
-		vTaskDelay(100);
+		vTaskDelay(500);
 		FACTORY_IO_Actuators_Modify(0, ACT_DISTRIBUTION_PALETTE);
 
 		vTaskDelay(10000);
