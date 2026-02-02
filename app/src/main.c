@@ -7,19 +7,12 @@
 
 #include "main.h"
 
-//Local Static Functions
-static uint8_t 	SystemClock_Config	(void);
-void eraseSubscription (sensor_sub_msg_t *subscription);
-
-// FreeRTOS tasks
-void vTaskRead 	(void *pvParameters);
-void vTaskSTOP(void *pvParameters);
-void vTaskBoxGenerator (void *pvParameters) ;
-
 // Kernel Objects
 xQueueHandle xSubscribeQueue, xWriteQueue;
-xSemaphoreHandle xSemGenerator, xSemDistributor, xSemBlocker, xSemPusher;
-xSemaphoreHandle xMutexConveyor;
+xSemaphoreHandle xSemBoxGenerator, xSemPalletGenerator, xSemDistributor, xSemBlocker, xSemPusher;
+
+//Local Static Functions
+static uint8_t 	SystemClock_Config	(void);
 
 int main(void)
 {
@@ -44,10 +37,8 @@ int main(void)
 	xSemDistributor = xSemaphoreCreateBinary();
 	xSemBlocker = xSemaphoreCreateBinary();
 	xSemPusher = xSemaphoreCreateBinary();
-	xSemGenerator = xSemaphoreCreateBinary();
-
-	// Mutex
-    xMutexConveyor = xSemaphoreCreateMutex();
+	xSemBoxGenerator = xSemaphoreCreateBinary();
+	xSemPalletGenerator = xSemaphoreCreateBinary();
 
 	// Messague queues initialization
 	xSubscribeQueue = xQueueCreate(SUBSCRIPTION_TABLE_SIZE, sizeof(sensor_sub_msg_t));
@@ -55,7 +46,8 @@ int main(void)
 
 	// Creating FreeRTOS tasks
 	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
-	xTaskCreate(vTaskBoxGenerator, "Task_CartonGenerator", 64, NULL, 1, NULL);
+	xTaskCreate(vTaskBoxGenerator, "Task_BoxGenerator", 64, NULL, 1, NULL);
+	xTaskCreate(vTaskPalletGenerator, "Task_PalletGenerator", 64, NULL, 1, NULL);
 	xTaskCreate(vTaskBlocker, "Task_Blocker", 128, NULL, 1, NULL);
 	xTaskCreate(vTaskPusher, "Task_Pusher", 64, NULL, 1, NULL);
 
@@ -64,9 +56,14 @@ int main(void)
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_CHARGER_PALETTISEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_PALETTE_VERS_ASCENSEUR);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_PALETTE);
+
 
 	// Initialize with box generation
-	xSemaphoreGive(xSemGenerator);
+	xSemaphoreGive(xSemBoxGenerator);
+	xSemaphoreGive(xSemPalletGenerator);
+
 
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");
@@ -79,125 +76,11 @@ int main(void)
 	}
 }
 
-void vTaskBoxGenerator (void *pvParameters) {
-	while (1) {
 
-		// Wait before generate
-		xSemaphoreTake(xSemGenerator, portMAX_DELAY);
-
-		// Has the semaphore, can generate other 2 boxes
-		FACTORY_IO_Actuators_Modify(1, ACT_DISTRIBUTION_CARTONS);
-		vTaskDelay(3500); // time for the 2nd box to be generated
-		FACTORY_IO_Actuators_Modify(0, ACT_DISTRIBUTION_CARTONS);
-		vTaskDelay(5000);
-	}
-}
-
-void vTaskRead (void *pvParameters)
-{
-	sensor_sub_msg_t msg;
-	sensor_sub_msg_t subscriptions[SUBSCRIPTION_TABLE_SIZE];
-	portTickType xLastWakeTime;
-	uint8_t isDuplicate = pdFALSE;
-	int8_t slotAvailable;
-	static uint8_t prev_sensor_state[SENSOR_TABLE_SIZE] = {0};
-
-
-	xLastWakeTime = xTaskGetTickCount();
-
-	// Earase tables
-	for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++) {
-        subscriptions[i].sub_mode = 0;
-		subscriptions[i].semaph_id = 0;
-		subscriptions[i].sensor_id = 0;
-		subscriptions[i].sensor_state = 0;
-	}
-
-
-	while(1){
-		// Subscribe queue demand
-		if (xQueueReceive(xSubscribeQueue, &msg, 0) == pdTRUE ) {
-			isDuplicate = pdFALSE;
-			slotAvailable = -1;
-
-			// Verify if it's already subscribed (same sensor, same state, same semaphore)
-			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++) {
-				if (subscriptions[i].semaph_id != 0 &&
-					subscriptions[i].sensor_id == msg.sensor_id &&
-					subscriptions[i].sensor_state == msg.sensor_state &&
-					subscriptions[i].semaph_id == msg.semaph_id) {
-					isDuplicate = pdTRUE;
-					break;
-				}
-				if (subscriptions[i].semaph_id == 0 && slotAvailable == -1) {
-					slotAvailable = i;  // First available slot
-				}
-			}
-
-			// Add subscription
-			if (isDuplicate == pdFALSE && slotAvailable != -1) {
-				subscriptions[slotAvailable] = msg;
-//				my_printf("\rSubscriptions\n");
-//				for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-//					my_printf("\r\nSemID=%d SensID=%d State=%d\n", subscriptions[i].semaph_id, subscriptions[i].sensor_id, subscriptions[i].sensor_state);
-
-			}
-		}
-
-
-		// VERIFY SUBSCRIPTION ATTENDED RESULTS
-			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
-			{
-				if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
-				{
-					uint8_t current = FACTORY_IO_Sensors_Get(subscriptions[i].sensor_id);
-
-					if (current != prev_sensor_state[i])
-					{
-					    if (current == subscriptions[i].sensor_state)
-					    {
-							switch (subscriptions[i].semaph_id)
-					    	{
-					    	case ID_SEMAPH_BLOCKER:
-								xSemaphoreGive(xSemBlocker);
-								break;
-
-					    	case ID_SEMAPH_PUSHER:
-					    		xSemaphoreGive(xSemPusher);
-								break;
-					    	}
-
-					        if (subscriptions[i].sub_mode == ONE_SHOT)
-					            eraseSubscription(&subscriptions[i]);
-					    }
-
-					    prev_sensor_state[i] = current;
-					}
-
-				}
-			}
-
-
-	vTaskDelayUntil(&xLastWakeTime, 200);
-	}
-}
-
-
-void vTaskWrite (void *pvParameters) {
-	sensor_sub_msg_t cmd_received;
-//	static uint32_t actuator_current_mask = 0;
-
-	while (1) {
-		xQueueReceive(xWriteQueue, &cmd_received, 0);
-
-	}
-	vTaskDelay(100);
-}
 
 
 /*
  * stop everything in scene
- */
 void vTaskSTOP (void *pvParameters) {
 	while (1) {
 		if (BSP_PB_GetState() == 1) {
@@ -209,12 +92,8 @@ void vTaskSTOP (void *pvParameters) {
 	}
 }
 
-void eraseSubscription (sensor_sub_msg_t *subscription) {
-	subscription->sub_mode = 0;
-	subscription->semaph_id = 0;
-	subscription->sensor_id = 0;
-	subscription->sensor_state = 0;
-}
+ */
+
 
 /*
  * 	Clock configuration for the Nucleo STM32F072RB board

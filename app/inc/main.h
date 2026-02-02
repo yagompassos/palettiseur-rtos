@@ -9,7 +9,6 @@
 #define APP_INC_MAIN_H_
 
 // Device header
-#include <blocker.h>
 #include "stm32f0xx.h"
 // BSP functions
 #include "bsp.h"
@@ -24,7 +23,10 @@
 #include "stream_buffer.h"
 #include "event_groups.h"
 // Developped Components
-#include "distributor.h"
+#include "Read.h"
+#include "Write.h"
+#include "boxGenerator.h"
+#include "palletGenerator.h"
 #include "blocker.h"
 #include "pusher.h"
 
@@ -102,24 +104,6 @@ typedef struct
 #define ACTIVE_LOW 0
 #define IDLE_LOW 1
 
-
-#define	EVENT_SEN_CARTON_DISTRIBUE			( (EventBits_t)( 0x01 <<0) )
-#define EVENT_SEN_CARTON_ENVOYE 	    	( (EventBits_t)( 0x01 <<1) )
-#define EVENT_SEN_ENTREE_PALETTISEUR  		( (EventBits_t)( 0x01 <<2) )
-#define EVENT_SEN_PORTE_OUVERTE 	    	( (EventBits_t)( 0x01 <<3) )
-#define EVENT_SEN_LIMITE_POUSSOIR 	    	( (EventBits_t)( 0x01 <<4) )
-#define EVENT_SEN_CLAMPED 	            	( (EventBits_t)( 0x01 <<5) )
-#define EVENT_SEN_ASCENSEUR_ETAGE_RDC 		( (EventBits_t)( 0x01 <<6) )
-#define EVENT_SEN_ASCENSEUR_ETAGE_1 		( (EventBits_t)( 0x01 <<7) )
-#define EVENT_SEN_ASCENSEUR_ETAGE_2     	( (EventBits_t)( 0x01 <<8) )
-#define EVENT_SEN_SORTIE_PALETTE        	( (EventBits_t)( 0x01 <<9) )
-#define EVENT_SEN_LIMITE_PORTE		    	( (EventBits_t)( 0x01 <<10) )
-#define EVENT_SEN_ASCENSEUR_EN_MOUVEMENT 	( (EventBits_t)( 0x01 <<11) )
-#define EVENT_SEN_ENTREE_PALETTE			( (EventBits_t)( 0x01 <<12) )
-#define EVENT_SEN_BUTEE_CARTON		    	( (EventBits_t)( 0x01 <<13) )
-
-/* Global handles */
-extern EventGroupHandle_t	sensorsEventGroup;
 
 /* Global functions */
 

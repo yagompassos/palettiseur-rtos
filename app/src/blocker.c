@@ -8,7 +8,7 @@
 #include "blocker.h"
 #include "main.h"
 
-extern xSemaphoreHandle xSemBlocker, xSemGenerator;
+extern xSemaphoreHandle xSemBlocker, xSemBoxGenerator;
 extern xQueueHandle xSubscribeQueue;
 
 /*
@@ -38,7 +38,7 @@ void vTaskBlocker (void *pvParameters) {
 		xSemaphoreTake(xSemBlocker, portMAX_DELAY);
 
 		// Send more boxes
-		xSemaphoreGive(xSemGenerator);
+		xSemaphoreGive(xSemBoxGenerator);
 
 		// Open palletizer
 		FACTORY_IO_Actuators_Modify(0, ACT_BLOCAGE_ENTREE_PALETTISEUR);
