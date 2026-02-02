@@ -9,6 +9,7 @@
 #define APP_INC_MAIN_H_
 
 // Device header
+#include <blocker.h>
 #include "stm32f0xx.h"
 // BSP functions
 #include "bsp.h"
@@ -23,10 +24,11 @@
 #include "stream_buffer.h"
 #include "event_groups.h"
 // Developped Components
-#include "EntryPalletizer.h"
 #include "distributor.h"
+#include "blocker.h"
+#include "pusher.h"
 
-#define SUBSCRIPTION_TABLE_SIZE 13
+#define SUBSCRIPTION_TABLE_SIZE 16
 #define SENSOR_TABLE_SIZE 13
 #define ONE_SHOT 0
 #define PERMANENT 1
@@ -35,7 +37,7 @@ typedef struct
 {
 	uint8_t sub_mode;		 // Permanent (1) or one-shot (0)
 	uint8_t semaph_id; 		 // Semaphore ID to use for publication
-	uint8_t sensor_id; 		 // Awaited sensor ID
+	uint16_t sensor_id; 		 // Awaited sensor ID
 	uint8_t sensor_state;	 // Awaited sensor State
 } sensor_sub_msg_t;
 
@@ -53,7 +55,7 @@ typedef struct
 #define ACT_TAPIS_DISTRIBUTION_CARTONS 	                2           // (1 << 1)
 #define ACT_BLOCAGE_ENTREE_PALETTISEUR  	            4           // (1 << 2)
 #define ACT_PORTE 	                                    8           // (1 << 3)
-#define ACT_POUSSOIR 	                                (1 << 4)    // 16
+#define ACT_POUSSOIR 	                                16 			// (1 << 4)
 #define ACT_CLAMP 	                                    32          // (1 << 5)
 #define ACT_MONTER_ASCENSEUR 	                        64          // (1 << 6)
 //#define skip one bit each 7 sensors or actuators (bit 7 / 128 skipped)
@@ -74,21 +76,21 @@ typedef struct
 
 
 //Define sensors
-#define SEN_CARTON_DISTRIBUE 	                        1           //(0)		//0 quand carton
-#define SEN_CARTON_ENVOYE 	                            (1 << 1)				//0 quand carton
-#define SEN_ENTREE_PALETTISEUR  	                    (1 << 2)				//0 quand carton
-#define SEN_PORTE_OUVERTE 	                            (1 << 3)				//1 quand ouvert
-#define SEN_LIMITE_POUSSOIR 	                        (1 << 4)				//1 quand a la limite
-#define SEN_CLAMPED 	                                (1 << 5)				//1 quand a clamp
-#define SEN_ASCENSEUR_ETAGE_RDC 	                    (1 << 6)      //(6)		//1 quand rdc
+#define SEN_CARTON_DISTRIBUE 	                        1           //(0)
+#define SEN_CARTON_ENVOYE 	                            (1 << 1)
+#define SEN_ENTREE_PALETTISEUR  	                    (1 << 2)
+#define SEN_PORTE_OUVERTE 	                            (1 << 3)
+#define SEN_LIMITE_POUSSOIR 	                        (1 << 4)
+#define SEN_CLAMPED 	                                (1 << 5)
+#define SEN_ASCENSEUR_ETAGE_RDC 	                    (1 << 6)      //(6)
 //#define skip one bit each 7 sensors or actuators
-#define SEN_ASCENSEUR_ETAGE_1 	                        (1 << 8)      //(7)		//1 quand ascenseur
-#define SEN_ASCENSEUR_ETAGE_2                           (1 << 9)				//1 quand ascenseur
-#define SEN_SORTIE_PALETTE                              (1 << 10)				//1 quand palette
-#define SEN_LIMITE_PORTE		                        (1 << 11)				//1 quand a la limite
-#define SEN_ASCENSEUR_EN_MOUVEMENT		                (1 << 12)				//1 quand mouvement
-#define SEN_ENTREE_PALETTE		                        (1 << 13)				//1 quand palette
-#define SEN_BUTEE_CARTON		                        (1 << 14)     //(13)	//1 quand carton
+#define SEN_ASCENSEUR_ETAGE_1 	                        (1 << 8)      //(7)
+#define SEN_ASCENSEUR_ETAGE_2                           (1 << 9)
+#define SEN_SORTIE_PALETTE                              (1 << 10)
+#define SEN_LIMITE_PORTE		                        (1 << 11)
+#define SEN_ASCENSEUR_EN_MOUVEMENT		                (1 << 12)
+#define SEN_ENTREE_PALETTE		                        (1 << 13)
+#define SEN_BUTEE_CARTON		                        16384 			// (1 << 14 )    //(13)
 
 #define ID_SEMAPH_DISTRIBUTOR		1
 #define ID_SEMAPH_BLOCKER			2

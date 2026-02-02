@@ -5,9 +5,7 @@
  *      Author: yago.milagres-passos
  */
 
-#include <EntryPalletizer.h>
-#include "factory_io.h"
-#include "FreeRTOS.h"
+#include "distributor.h"
 #include "main.h"
 
 extern xSemaphoreHandle xSemDistributor;

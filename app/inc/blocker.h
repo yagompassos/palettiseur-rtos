@@ -5,8 +5,8 @@
  *      Author: Yago
  */
 
-#ifndef INC_ENTRYPALLETIZER_H_
-#define INC_ENTRYPALLETIZER_H_
+#ifndef INC_BLOCKER_H_
+#define INC_BLOCKER_H_
 
 
 /*
@@ -14,6 +14,6 @@
  *	It's the barrier that let the packages in to one spot before the elevator
  *
  */
-void vTaskEntryPalletizer (void *pvParameters);
+void vTaskBlocker (void *pvParameters);
 
-#endif /* INC_ENTRYPALLETIZER_H_ */
+#endif /* INC_BLOCKER_H_ */
