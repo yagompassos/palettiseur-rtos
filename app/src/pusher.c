@@ -10,7 +10,8 @@
 #include "main.h"
 
 extern xSemaphoreHandle xSemPusher;
-extern xQueueHandle xSubscribeQueue;
+extern xQueueHandle 	xSubscribeQueue;
+extern xTaskHandle		vTaskDoor_handle;
 
 
 /*
@@ -21,6 +22,8 @@ extern xQueueHandle xSubscribeQueue;
 void vTaskPusher(void *pvParameters) {
 	sensor_sub_msg_t sub_box_arrived = {ONE_SHOT, ID_SEMAPH_PUSHER, SEN_BUTEE_CARTON, 1};
 	sensor_sub_msg_t sub_pusher_limit = {ONE_SHOT, ID_SEMAPH_PUSHER, SEN_LIMITE_POUSSOIR, 1};
+
+	uint8_t pushes = 0;
 
 	while (1) {
 
@@ -37,6 +40,16 @@ void vTaskPusher(void *pvParameters) {
 
 		// Retrieve pusher
 		FACTORY_IO_Actuators_Modify(0, ACT_POUSSOIR);
+
+		pushes++;
+
+		if (pushes == THREE_PUSHES) {
+
+			// Redefine pushing counter
+			pushes = 0;
+			xTaskNotifyGive(vTaskDoor_handle);
+
+		}
 
 		vTaskDelay(500);
 	}

@@ -30,6 +30,7 @@
 #include "blocker.h"
 #include "pusher.h"
 #include "elevator.h"
+#include "door.h"
 
 #define SUBSCRIPTION_TABLE_SIZE 16
 #define SENSOR_TABLE_SIZE 13
@@ -54,26 +55,26 @@ typedef struct
 
 
 //Define actuators
-#define ACT_DISTRIBUTION_CARTONS 	                    1           // (1 << 0)
-#define ACT_TAPIS_DISTRIBUTION_CARTONS 	                2           // (1 << 1)
-#define ACT_BLOCAGE_ENTREE_PALETTISEUR  	            4           // (1 << 2)
-#define ACT_PORTE 	                                    8           // (1 << 3)
-#define ACT_POUSSOIR 	                                16 			// (1 << 4)
-#define ACT_CLAMP 	                                    32          // (1 << 5)
-#define ACT_MONTER_ASCENSEUR 	                        64          // (1 << 6)
+#define ACT_DISTRIBUTION_CARTONS 	                    (1 << 0) 		//  1
+#define ACT_TAPIS_DISTRIBUTION_CARTONS 	                (1 << 1)        //  2
+#define ACT_BLOCAGE_ENTREE_PALETTISEUR  	            (1 << 2)         //  4
+#define ACT_PORTE 	                                    (1 << 3)        //  8
+#define ACT_POUSSOIR 	                                (1 << 4) 		//  16
+#define ACT_CLAMP 	                                    (1 << 5)        //  32
+#define ACT_MONTER_ASCENSEUR 	                        (1 << 6)        //  64
 //#define skip one bit each 7 sensors or actuators (bit 7 / 128 skipped)
-#define ACT_DESCENDRE_ASCENSEUR 	                    256         // (1 << 8)
-#define ACT_ASCENSEUR_TO_LIMIT                          512         // (1 << 9)
-#define ACT_DISTRIBUTION_PALETTE                        1024        // (1 << 10)
-#define ACT_CHARGER_PALETTE		                        2048        // (1 << 11)
+#define ACT_DESCENDRE_ASCENSEUR 	                    256         // (1 << 8) 256
+#define ACT_ASCENSEUR_TO_LIMIT                          512         // (1 << 9) 512
+#define ACT_DISTRIBUTION_PALETTE                        1024        // (1 << 10) 1024
+#define ACT_CHARGER_PALETTE		                        2048        // (1 << 11) 2048
 #define ACT_TAPIS_CARTON_VERS_PALETTISEUR		        (1 << 12)   // 4096
-#define ACT_TOURNER_CARTON		                        8192        // (1 << 13)
-#define ACT_DECHARGER_PALETTISEUR		                16384       // (1 << 14)
+#define ACT_TOURNER_CARTON		                        8192        // (1 << 13) 8192
+#define ACT_DECHARGER_PALETTISEUR		                16384       // (1 << 14) 16384
 //#define skip one bit each 7 sensors or actuators (bit 15 / 32768 skipped)
-#define ACT_CHARGER_PALETTISEUR                         65536       // (1 << 16)
-#define ACT_DECHARGER_PALETTE                           131072      // (1 << 17)
-#define ACT_TAPIS_PALETTE_VERS_ASCENSEUR                262144      // (1 << 18)
-#define ACT_TAPIS_DISTRIBUTION_PALETTE                  524288      // (1 << 19)
+#define ACT_CHARGER_PALETTISEUR                         65536       // (1 << 16) 65536
+#define ACT_DECHARGER_PALETTE                           131072      // (1 << 17) 131072
+#define ACT_TAPIS_PALETTE_VERS_ASCENSEUR                262144      // (1 << 18) 262144
+#define ACT_TAPIS_DISTRIBUTION_PALETTE                  524288      // (1 << 19) 524288
 #define ACT_TAPIS_FIN                                   1048576     // (1 << 20)
 #define ACT_REMOVER                                     2097152     // (1 << 21)    //(19)
 
@@ -93,17 +94,12 @@ typedef struct
 #define SEN_LIMITE_PORTE		                        (1 << 11)
 #define SEN_ASCENSEUR_EN_MOUVEMENT		                (1 << 12)
 #define SEN_ENTREE_PALETTE		                        (1 << 13)
-#define SEN_BUTEE_CARTON		                        16384 			// (1 << 14 )    //(13)
+#define SEN_BUTEE_CARTON		                        (1 << 14)    //(13)
 
 #define ID_SEMAPH_BLOCKER			1
 #define ID_SEMAPH_PUSHER			2
 #define ID_SEMAPH_ELEVATOR			3
-
-
-#define ACTIVE_HIGH 1
-#define IDLE_HIGH 0
-#define ACTIVE_LOW 0
-#define IDLE_LOW 1
+#define ID_SEMAPH_DOOR				4
 
 
 /* Global functions */

@@ -9,7 +9,7 @@
 #include "main.h"
 
 //extern kernel objets
-extern xSemaphoreHandle xSemGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator;
+extern xSemaphoreHandle xSemGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
 extern xQueueHandle xSubscribeQueue;
 
 void eraseSubscription (sensor_sub_msg_t *subscription);
@@ -89,6 +89,10 @@ void vTaskRead (void *pvParameters)
 
 							case ID_SEMAPH_ELEVATOR:
 								xSemaphoreGive(xSemElevator);
+								break;
+
+							case ID_SEMAPH_DOOR:
+								xSemaphoreGive(xSemDoor);
 								break;
 							}
 

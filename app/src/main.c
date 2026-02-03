@@ -9,7 +9,8 @@
 
 // Kernel Objects
 xQueueHandle xSubscribeQueue, xWriteQueue;
-xSemaphoreHandle xSemBoxGenerator, xSemPalletGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator;
+xTaskHandle		vTaskDoor_handle;
+xSemaphoreHandle xSemBoxGenerator, xSemPalletGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
 
 //Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
@@ -39,6 +40,8 @@ int main(void)
 	xSemPusher = xSemaphoreCreateBinary();
 	xSemBoxGenerator = xSemaphoreCreateBinary();
 	xSemPalletGenerator = xSemaphoreCreateBinary();
+	xSemElevator = xSemaphoreCreateBinary();
+	xSemDoor = xSemaphoreCreateBinary();
 
 	// Messague queues initialization
 	xSubscribeQueue = xQueueCreate(SUBSCRIPTION_TABLE_SIZE, sizeof(sensor_sub_msg_t));
@@ -51,6 +54,7 @@ int main(void)
 	xTaskCreate(vTaskBlocker, "Task_Blocker", 64, NULL, 1, NULL);
 	xTaskCreate(vTaskPusher, "Task_Pusher", 64, NULL, 1, NULL);
 	xTaskCreate(vTaskElevator, "Task_Elevator", 64, NULL, 1, NULL);
+	xTaskCreate(vTaskDoor, "Task_Door", 64, NULL, 1, &vTaskDoor_handle);
 
 	// Roll every Conveyor in scene
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
@@ -59,6 +63,8 @@ int main(void)
 	FACTORY_IO_Actuators_Modify(1, ACT_CHARGER_PALETTISEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_PALETTE_VERS_ASCENSEUR);
 	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_PALETTE);
+	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_FIN);
+	FACTORY_IO_Actuators_Modify(1, ACT_REMOVER);
 
 	// Initialize with box generation
 	xSemaphoreGive(xSemBoxGenerator);
