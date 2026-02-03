@@ -8,6 +8,7 @@
 #ifndef INC_PUSHER_H_
 #define INC_PUSHER_H_
 
+#define THREE_PUSHES	3
 
 void vTaskPusher(void *pvParameters);
 
