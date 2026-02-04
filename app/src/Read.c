@@ -10,6 +10,7 @@
 
 //extern kernel objets
 extern xSemaphoreHandle xSemGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
+extern xSemaphoreHandle xBridgeMutex;
 extern xQueueHandle xSubscribeQueue;
 
 void eraseSubscription (sensor_sub_msg_t *subscription);
@@ -67,44 +68,48 @@ void vTaskRead (void *pvParameters)
 
 
 		// VERIFY SUBSCRIPTION ATTENDED RESULTS
-			for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
+		xSemaphoreTake(xBridgeMutex, portMAX_DELAY);
+
+		for (int i=0; i<SUBSCRIPTION_TABLE_SIZE; i++)
+		{
+			if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
 			{
-				if (subscriptions[i].semaph_id != 0) // verify if it's a subscription or just an empty space
+
+				uint8_t current = FACTORY_IO_Sensors_Get(subscriptions[i].sensor_id);
+
+				if (current != prev_sensor_state[i])
 				{
-					uint8_t current = FACTORY_IO_Sensors_Get(subscriptions[i].sensor_id);
-
-					if (current != prev_sensor_state[i])
+					if (current == subscriptions[i].sensor_state)
 					{
-					    if (current == subscriptions[i].sensor_state)
-					    {
-							switch (subscriptions[i].semaph_id)
-					    	{
-					    	case ID_SEMAPH_BLOCKER:
-								xSemaphoreGive(xSemBlocker);
-								break;
+						switch (subscriptions[i].semaph_id)
+						{
+						case ID_SEMAPH_BLOCKER:
+							xSemaphoreGive(xSemBlocker);
+							break;
 
-					    	case ID_SEMAPH_PUSHER:
-					    		xSemaphoreGive(xSemPusher);
-								break;
+						case ID_SEMAPH_PUSHER:
+							xSemaphoreGive(xSemPusher);
+							break;
 
-							case ID_SEMAPH_ELEVATOR:
-								xSemaphoreGive(xSemElevator);
-								break;
+						case ID_SEMAPH_ELEVATOR:
+							xSemaphoreGive(xSemElevator);
+							break;
 
-							case ID_SEMAPH_DOOR:
-								xSemaphoreGive(xSemDoor);
-								break;
-							}
+						case ID_SEMAPH_DOOR:
+							xSemaphoreGive(xSemDoor);
+							break;
+						}
 
-					        if (subscriptions[i].sub_mode == ONE_SHOT)
-					            eraseSubscription(&subscriptions[i]);
-					    }
-
-					    prev_sensor_state[i] = current;
+						if (subscriptions[i].sub_mode == ONE_SHOT)
+							eraseSubscription(&subscriptions[i]);
 					}
 
+					prev_sensor_state[i] = current;
 				}
+
 			}
+		}
+		xSemaphoreGive(xBridgeMutex);
 
 
 	vTaskDelayUntil(&xLastWakeTime, 200);

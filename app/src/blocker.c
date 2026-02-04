@@ -9,7 +9,7 @@
 #include "main.h"
 
 extern xSemaphoreHandle xSemBlocker, xSemBoxGenerator;
-extern xQueueHandle xSubscribeQueue;
+extern xQueueHandle xSubscribeQueue, xWriteQueue;
 
 /*
  *	TaskBlocker controls "BLOCAGE ENTREE PALETTISEUR"
@@ -19,6 +19,9 @@ extern xQueueHandle xSubscribeQueue;
 void vTaskBlocker (void *pvParameters) {
 	sensor_sub_msg_t sub_entree_detecte = {ONE_SHOT, ID_SEMAPH_BLOCKER, SEN_ENTREE_PALETTISEUR, 1};
 	sensor_sub_msg_t sub_entree_passe = {ONE_SHOT, ID_SEMAPH_BLOCKER, SEN_ENTREE_PALETTISEUR, 0};
+
+	actuator_cmd_msg_t cmd_open_palletizer = {ACT_BLOCAGE_ENTREE_PALETTISEUR, 0};
+	actuator_cmd_msg_t cmd_block_palletizer = {ACT_BLOCAGE_ENTREE_PALETTISEUR, 1};
 
 	while (1) {
 		// Wait for first box to enter the sensor reading area
@@ -41,9 +44,11 @@ void vTaskBlocker (void *pvParameters) {
 		xSemaphoreGive(xSemBoxGenerator);
 
 		// Open palletizer
-		FACTORY_IO_Actuators_Modify(0, ACT_BLOCAGE_ENTREE_PALETTISEUR);
+		xQueueSendToBack(xWriteQueue, &cmd_open_palletizer, 0);
+//		my_printf("\r[blocker] enviando cmd: %d, %d", cmd_open_palletizer.actuator_mask, cmd_open_palletizer.actuator_state);
 		vTaskDelay(1500);
-		FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
+		xQueueSendToBack(xWriteQueue, &cmd_block_palletizer, 0);
+//		my_printf("\r[blocker] enviando cmd: %d, %d", cmd_block_palletizer.actuator_mask, cmd_block_palletizer.actuator_state);
 
 		vTaskDelay(500);
 	}

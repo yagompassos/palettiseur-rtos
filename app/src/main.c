@@ -11,6 +11,7 @@
 xQueueHandle xSubscribeQueue, xWriteQueue;
 xTaskHandle		vTaskDoor_handle;
 xSemaphoreHandle xSemBoxGenerator, xSemPalletGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
+xSemaphoreHandle xBridgeMutex;
 
 //Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
@@ -34,6 +35,9 @@ int main(void)
 	// Read all states from the scene
 	FACTORY_IO_update();
 
+	// Roll every Conveyor in scene
+	FACTORY_IO_Actuators_Set(ALLWAYS_RUNNING_CONVEYORS);
+
 	// Semaphores initializations
 	xSemDistributor = xSemaphoreCreateBinary();
 	xSemBlocker = xSemaphoreCreateBinary();
@@ -43,28 +47,23 @@ int main(void)
 	xSemElevator = xSemaphoreCreateBinary();
 	xSemDoor = xSemaphoreCreateBinary();
 
+	// Mutex for Uart
+	xBridgeMutex = xSemaphoreCreateMutex();
+
 	// Messague queues initialization
 	xSubscribeQueue = xQueueCreate(SUBSCRIPTION_TABLE_SIZE, sizeof(sensor_sub_msg_t));
-	xWriteQueue = xQueueCreate(SUBSCRIPTION_TABLE_SIZE, sizeof(actuator_cmd_msg_t));
+	xWriteQueue = xQueueCreate(COMMAND_QUEUE_SIZE, sizeof(actuator_cmd_msg_t));
 
 	// Creating FreeRTOS tasks
-	xTaskCreate(vTaskRead, "Task_Read", 256, NULL, 3, NULL);
+	xTaskCreate(vTaskRead, "Task_Read", 96, NULL, 3, NULL);
+	xTaskCreate(vTaskWrite, "Task_Write", 96, NULL, 2, NULL);
 	xTaskCreate(vTaskBoxGenerator, "Task_BoxGenerator", 64, NULL, 1, NULL);
 	xTaskCreate(vTaskPalletGenerator, "Task_PalletGenerator", 64, NULL, 1, NULL);
 	xTaskCreate(vTaskBlocker, "Task_Blocker", 64, NULL, 1, NULL);
 	xTaskCreate(vTaskPusher, "Task_Pusher", 64, NULL, 1, NULL);
-	xTaskCreate(vTaskElevator, "Task_Elevator", 64, NULL, 1, NULL);
+	xTaskCreate(vTaskElevator, "Task_Elevator", 96, NULL, 1, NULL);
 	xTaskCreate(vTaskDoor, "Task_Door", 64, NULL, 1, &vTaskDoor_handle);
 
-	// Roll every Conveyor in scene
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_CARTONS);
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_CARTON_VERS_PALETTISEUR);
-	FACTORY_IO_Actuators_Modify(1, ACT_BLOCAGE_ENTREE_PALETTISEUR);
-	FACTORY_IO_Actuators_Modify(1, ACT_CHARGER_PALETTISEUR);
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_PALETTE_VERS_ASCENSEUR);
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_DISTRIBUTION_PALETTE);
-	FACTORY_IO_Actuators_Modify(1, ACT_TAPIS_FIN);
-	FACTORY_IO_Actuators_Modify(1, ACT_REMOVER);
 
 	// Initialize with box generation
 	xSemaphoreGive(xSemBoxGenerator);
@@ -81,23 +80,6 @@ int main(void)
 	}
 }
 
-
-
-
-/*
- * stop everything in scene
-void vTaskSTOP (void *pvParameters) {
-	while (1) {
-		if (BSP_PB_GetState() == 1) {
-
-			my_printf("stopping\r\n");
-			FACTORY_IO_Actuators_Set(0);
-		}
-		vTaskDelay(50);
-	}
-}
-
- */
 
 
 /*

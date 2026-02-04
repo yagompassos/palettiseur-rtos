@@ -34,6 +34,7 @@
 
 #define SUBSCRIPTION_TABLE_SIZE 16
 #define SENSOR_TABLE_SIZE 13
+#define COMMAND_QUEUE_SIZE 20
 #define ONE_SHOT 0
 #define PERMANENT 1
 
@@ -47,8 +48,8 @@ typedef struct
 
 typedef struct
 {
-	uint8_t actuator_id; 	 // Awaited sensor ID
-	uint8_t actuator_state;	 // Awaited sensor State
+	uint32_t actuator_mask; 	 // actuators ID mask to change
+	uint8_t actuator_state;	 // actuators state wanted
 } actuator_cmd_msg_t;
 
 //typedef uint8_t msg_t[sizeof(sensor_sub_msg_t)];
@@ -100,6 +101,8 @@ typedef struct
 #define ID_SEMAPH_PUSHER			2
 #define ID_SEMAPH_ELEVATOR			3
 #define ID_SEMAPH_DOOR				4
+
+#define ALLWAYS_RUNNING_CONVEYORS ACT_TAPIS_DISTRIBUTION_CARTONS | ACT_TAPIS_CARTON_VERS_PALETTISEUR | ACT_BLOCAGE_ENTREE_PALETTISEUR | ACT_CHARGER_PALETTISEUR | ACT_TAPIS_PALETTE_VERS_ASCENSEUR | ACT_TAPIS_DISTRIBUTION_PALETTE | ACT_TAPIS_FIN | ACT_REMOVER
 
 
 /* Global functions */
