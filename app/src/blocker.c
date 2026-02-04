@@ -8,8 +8,9 @@
 #include "blocker.h"
 #include "main.h"
 
-extern xSemaphoreHandle xSemBlocker, xSemBoxGenerator;
-extern xQueueHandle xSubscribeQueue, xWriteQueue;
+extern xTaskHandle 		vTaskBoxGenerator_handle;
+extern xSemaphoreHandle xSemBlocker;
+extern xQueueHandle 	xSubscribeQueue, xWriteQueue;
 
 /*
  *	TaskBlocker controls "BLOCAGE ENTREE PALETTISEUR"
@@ -22,6 +23,9 @@ void vTaskBlocker (void *pvParameters) {
 
 	actuator_cmd_msg_t cmd_open_palletizer = {ACT_BLOCAGE_ENTREE_PALETTISEUR, 0};
 	actuator_cmd_msg_t cmd_block_palletizer = {ACT_BLOCAGE_ENTREE_PALETTISEUR, 1};
+
+	xTaskNotifyGive(vTaskBoxGenerator_handle);
+
 
 	while (1) {
 		// Wait for first box to enter the sensor reading area
@@ -41,7 +45,7 @@ void vTaskBlocker (void *pvParameters) {
 		xSemaphoreTake(xSemBlocker, portMAX_DELAY);
 
 		// Send more boxes
-		xSemaphoreGive(xSemBoxGenerator);
+		xTaskNotifyGive(vTaskBoxGenerator_handle);
 
 		// Open palletizer
 		xQueueSendToBack(xWriteQueue, &cmd_open_palletizer, 0);

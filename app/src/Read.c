@@ -9,7 +9,7 @@
 #include "main.h"
 
 //extern kernel objets
-extern xSemaphoreHandle xSemGenerator, xSemDistributor, xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
+extern xSemaphoreHandle xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
 extern xSemaphoreHandle xBridgeMutex;
 extern xQueueHandle xSubscribeQueue;
 

@@ -8,8 +8,8 @@
 #include "palletGenerator.h"
 #include "main.h"
 
-extern xSemaphoreHandle xSemPalletGenerator;
-extern xQueueHandle xWriteQueue;
+extern xTaskHandle		vTaskPalletGenerator_handle;
+extern xQueueHandle 	xWriteQueue;
 
 
 void vTaskPalletGenerator ( void *pvParameters) {
@@ -18,8 +18,8 @@ void vTaskPalletGenerator ( void *pvParameters) {
 
 	while (1) {
 
-		// Wait for semaphore
-		xSemaphoreTake(xSemPalletGenerator, portMAX_DELAY);
+		// Wait notify
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		// Generate 1 Pallet
 		xQueueSendToBack(xWriteQueue, &cmd_generate_pallet, 0);

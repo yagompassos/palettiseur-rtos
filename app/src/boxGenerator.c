@@ -8,8 +8,8 @@
 #include "boxGenerator.h"
 #include "main.h"
 
-extern xSemaphoreHandle xSemBoxGenerator;
-extern xQueueHandle xWriteQueue;
+extern xTaskHandle		vTaskBoxGenerator_handle;
+extern xQueueHandle 	xWriteQueue;
 
 void vTaskBoxGenerator (void *pvParameters) {
 	actuator_cmd_msg_t cmd_generate_box = {ACT_DISTRIBUTION_CARTONS , 1};
@@ -17,8 +17,8 @@ void vTaskBoxGenerator (void *pvParameters) {
 
 	while (1) {
 
-		// Wait before generate
-		xSemaphoreTake(xSemBoxGenerator, portMAX_DELAY);
+		// Wait notify
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		// Has the semaphore, can generate other 2 boxes
 		xQueueSendToBack(xWriteQueue, &cmd_generate_box, 0);

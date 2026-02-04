@@ -8,8 +8,9 @@
 #include "elevator.h"
 #include "main.h"
 
-extern xSemaphoreHandle xSemElevator, xSemPalletGenerator;
-extern xQueueHandle xSubscribeQueue, xWriteQueue;
+extern xTaskHandle 		vTaskPalletGenerator_handle;
+extern xSemaphoreHandle xSemElevator;
+extern xQueueHandle 	xSubscribeQueue, xWriteQueue;
 
 
 /*
@@ -30,6 +31,7 @@ void vTaskElevator (void *pvParameters){
 	actuator_cmd_msg_t cmd_elevator_stop = {ACT_MONTER_ASCENSEUR | ACT_DESCENDRE_ASCENSEUR | ACT_ASCENSEUR_TO_LIMIT , 0};
 	actuator_cmd_msg_t cmd_elevator_to_limit = {ACT_ASCENSEUR_TO_LIMIT, 1};
 
+	xTaskNotifyGive(vTaskPalletGenerator_handle);
 
 	while (1) {
 
@@ -85,7 +87,7 @@ void vTaskElevator (void *pvParameters){
 		xSemaphoreTake(xSemElevator, portMAX_DELAY);
 
 		// Allow new pallet to come
-		xSemaphoreGive(xSemPalletGenerator);
+		xTaskNotifyGive(vTaskPalletGenerator_handle);
 
 		vTaskDelay(500);
 	}
