@@ -8,10 +8,10 @@
 #include "main.h"
 
 // Kernel Objects
-xQueueHandle xSubscribeQueue, xWriteQueue;
-xTaskHandle		vTaskDoor_handle, vTaskBoxGenerator_handle, vTaskPalletGenerator_handle;
-xSemaphoreHandle xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
-xSemaphoreHandle xBridgeMutex;
+xQueueHandle 		xSubscribeQueue, xWriteQueue;
+xSemaphoreHandle 	xSemBlocker, xSemPusher, xSemElevator, xSemDoor;
+xSemaphoreHandle 	xBridgeMutex;
+xTaskHandle			vTaskDoor_handle, vTaskBoxGenerator_handle, vTaskPalletGenerator_handle;
 
 //Local Static Functions
 static uint8_t 	SystemClock_Config	(void);
@@ -31,7 +31,7 @@ int main(void)
 	my_printf("SYSCLK = %d Hz\r\n", SystemCoreClock);
 
 	// Start Trace Recording
-//	xTraceEnable(TRC_START);
+	xTraceEnable(TRC_START);
 
 	// Read all states from the scene
 	FACTORY_IO_update();
@@ -53,25 +53,23 @@ int main(void)
 	xWriteQueue = xQueueCreate(COMMAND_QUEUE_SIZE, sizeof(actuator_cmd_msg_t));
 
 	// Tracing Kernel objects:
-//	vTraceSetSemaphoreName(xSemBlocker, "xSEM");
-//	vTraceSetSemaphoreName(xSemPusher, "xSEM");
-//	vTraceSetSemaphoreName(xSemElevator, "xSEM");
-//	vTraceSetSemaphoreName(xSemDoor, "xSEM");
-//	vTraceSetSemaphoreName(xSemBoxGenerator, "xSEM");
-//	vTraceSetSemaphoreName(xSemPalletGenerator, "xSEM");
-//
-//	vTraceSetMutexName(xConsoleMutex, "Console Mutex");
-
+	vTraceSetSemaphoreName(xSemBlocker, "Blocker Semaphore");
+	vTraceSetSemaphoreName(xSemPusher, "Pusher Semaphore");
+	vTraceSetSemaphoreName(xSemElevator, "Elevator Semaphore");
+	vTraceSetSemaphoreName(xSemDoor, "Door Semaphore");
+	vTraceSetMutexName(xBridgeMutex, "Bridge Mutex");
+	vTraceSetQueueName(xSubscribeQueue, "Subscribe Queue");
+	vTraceSetQueueName(xWriteQueue, "Write Queue");
 
 	// Creating FreeRTOS tasks
 	xTaskCreate(vTaskRead, "Task_Read", 96, NULL, 3, NULL);
-	xTaskCreate(vTaskWrite, "Task_Write", 96, NULL, 2, NULL);
-	xTaskCreate(vTaskBlocker, "Task_Blocker", 64, NULL, 1, NULL);
-	xTaskCreate(vTaskPusher, "Task_Pusher", 64, NULL, 1, NULL);
-	xTaskCreate(vTaskElevator, "Task_Elevator", 96, NULL, 1, NULL);
-	xTaskCreate(vTaskDoor, "Task_Door", 64, NULL, 1, &vTaskDoor_handle);
-	xTaskCreate(vTaskBoxGenerator, "Task_BoxGenerator", 64, NULL, 1, &vTaskBoxGenerator_handle);
-	xTaskCreate(vTaskPalletGenerator, "Task_PalletGenerator", 64, NULL, 1, &vTaskPalletGenerator_handle);
+	xTaskCreate(vTaskWrite, "Task_Write", 128, NULL, 2, NULL);
+	xTaskCreate(vTaskBlocker, "Task_Blocker", 160, NULL, 1, NULL);
+	xTaskCreate(vTaskPusher, "Task_Pusher", 104, NULL, 1, NULL);
+	xTaskCreate(vTaskElevator, "Task_Elevator", 268, NULL, 1, NULL);
+	xTaskCreate(vTaskDoor, "Task_Door", 144, NULL, 1, &vTaskDoor_handle);
+	xTaskCreate(vTaskBoxGenerator, "Task_BoxGenerator", 96, NULL, 1, &vTaskBoxGenerator_handle);
+	xTaskCreate(vTaskPalletGenerator, "Task_PalletGenerator", 96, NULL, 1, &vTaskPalletGenerator_handle);
 
 	// Start the Scheduler
 	my_printf("Starting Scheduler...\r\n");

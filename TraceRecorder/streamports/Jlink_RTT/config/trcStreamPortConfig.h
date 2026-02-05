@@ -26,7 +26,7 @@ then the internal buffer must be enabled to avoid infinite recursion. */
 * @brief Configures the size of the internal buffer if used.
 * is enabled.
 */
-#define TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_SIZE 5000
+#define TRC_CFG_STREAM_PORT_INTERNAL_BUFFER_SIZE 2048
 
 /**
 * @def TRC_CFG_STREAM_PORT_RTT_UP_BUFFER_SIZE
@@ -43,7 +43,7 @@ then the internal buffer must be enabled to avoid infinite recursion. */
 * But integrated J-Link OB interfaces are slower and needs about 5-10 KB, 
 * depending on the amount of data produced.
 */
-#define TRC_CFG_STREAM_PORT_RTT_UP_BUFFER_SIZE 5000
+#define TRC_CFG_STREAM_PORT_RTT_UP_BUFFER_SIZE 2048
 
 /**
 * @def TRC_CFG_STREAM_PORT_RTT_DOWN_BUFFER_SIZE
@@ -102,7 +102,7 @@ then the internal buffer must be enabled to avoid infinite recursion. */
 * Tracealyzer will report lost events if the transfer is not
 * fast enough. In that case, try increasing the size of the "up buffer".
 */
-#define TRC_CFG_STREAM_PORT_RTT_MODE SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL
+#define TRC_CFG_STREAM_PORT_RTT_MODE SEGGER_RTT_MODE_NO_BLOCK_SKIP
 
 /**
  * @def TRC_CFG_STREAM_PORT_RTT_NO_LOCK_WRITE
