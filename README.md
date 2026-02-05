@@ -18,31 +18,63 @@ It's also recommended to have [Percepio's Tracealyzer](https://percepio.com/trac
 ### Steps
 It's good to know that this project wasn't run on Linux yet, so the next step by step guide shows how you should configurate in Windows.
 
-1. In Windows, open `Device Manager` and check the port your STM is connected (if it's not, connect it!)
-2. Copy the port name (e.g.: `COM7`), we are using it just after.
-3. Open your python bridge:
+#### 1. In Windows, open `Device Manager` and check the port your STM is connected (if it's not, connect it!)
+
+#### 2. Copy/Memorize the port name (e.g.: `COM7`), we are using it just after.
+#### 3. Adapt your bridge:
+
+You can open the bridge executable, it's easier. It can be found in `bridge/lib/Bridge.exe`.
+Change the COM option to the one you found in Device Manager, set Baud rate to `115200` and click `open`.
+
+![Image](assets/tuto.png)
+
+
+Skip to Step 3. If this doesn't work, you can try with the python bridge:
+
+1. Open your python bridge:
 ```bash
 cd bridge
 ```
-4. Edit the last line with the code you found in your peripheral manager:
+2. Edit the last line with the code you found in your peripheral manager:
 ```python
-    EngineIO_Controller(port='COM6', baudrate=115200, timeout=.5, rate=0.016,  verbose=True)
+EngineIO_Controller(port='COM6', baudrate=115200, timeout=.5, rate=0.016,  verbose=True)
 ```
-5. Save it and run it.
+3. Save it and run it.
 ```bash
 python run.py
 ```
 
-6. Download the [palettiseur scene](https://gitlab.polytech.umontpellier.fr/tp_ostr_factoryio/factoryio-scene-palettiseur) and run it in Factory I/O
-7. Set your STM board for J-Link Segger (https://moodle.umontpellier.fr/mod/page/view.php?id=358464 e https://www.pomad.fr/tutorials/freertos/trace_streaming)
-7. * Setup up your debugger by going to Debugger Cofigurations .
-- click twice at STM32 C/C++ Application
-- click to the new file created 
-- in this file, open Debugger window.
-7. Run the debugger in STM32CubeIDE to program your board, and run the code.
-8. You should see the scene rolling in Factory I/O.
+#### 3. Open the Facroty IO Palletizer scene in the Factory IO simulator. 
+The scene can be found in `assets/Palettiseur_scene.factoryio` in the root folder of this repository. You open The program Factory IO, add the `Palletiseur_scene.factoryio` file inside the FactoryIO `MyScenes/` folder (usually: `C:\Users\<your-user>\Documents\Factory IO\My Scenes`) and run it.
 
-#### Run without Tracealyzer
+#### 4. Set your STM board for J-Link Segger 
+You can follow one of these tutorials, wichever available:
+- [Tutorial 1](https://moodle.umontpellier.fr/mod/page/view.php?id=358464)
+- [Tutorial 2](https://www.pomad.fr/tutorials/freertos/trace_streaming)
+
+#### 5. Setup up your debugger by going to Debugger Cofigurations .
+Open up the project inside STMCubeIDE.
+
+In Project Explorer tab, right click the project name `palettiseur-rtos`. Then go to `Properties`, open up `C/C++ Build`, select `Settings`, inside Tool Settings tab, select `MCU GCC Linker` > `General`. Go over the `Linker Script (-T)` option, select `Browse` and search and select the file  `Debug_STM32F072RB_FLASH.ld`.
+
+![Image](assets/tuto2.png)
+
+Apply and close, open Debug Configurations in the top of eclipse IDE, go to `Debugger` and verify it's the same as the following image.
+
+![Image](assets/tuto3.png)
+
+Build and Debug, this can give errors if first try, redo if necessary.
+
+#### 6. Open TraceAlyzer and set ready.
+
+Follow the tutorial after topic `3. Time to stream!` :
+[Pomad Tutorial](https://www.pomad.fr/tutorials/freertos/trace_streaming)
+
+#### 7. Run the debugger in STM32CubeIDE to program your board, and run the code.
+
+You should see the scene rolling in Factory I/O.
+
+### Run without Tracealyzer
 
 You gotta change this line in `app/inc/FreeRTOSConfig.h`
 ```c
