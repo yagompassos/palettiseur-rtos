@@ -1,8 +1,12 @@
 # The Palletizer!
 
-It's a project that simulates a factory paletizer in a Factory IO scene. 
+![gif](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExN2trb284b2V4amxibjMyanhpZm55bGRnNjUwYm9kbWg1b3NxZHFveCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JyVhV13H6YDO8gJ06Q/giphy.gif)
+
+It's a project that simulates a factory palletizer in a Factory IO scene. 
 Develloped for the course of Real time Operating Systems @ Polytech Montpellier.
 We use FreeRTOS, Percepio Tracealyzer and Factory IO as tools.
+
+##### Full video of it running on [YouTube](https://youtu.be/gn89jhgpf5w)
 
 ## How to run
 
